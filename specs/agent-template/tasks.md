@@ -1,6 +1,6 @@
 # Agent Template: Work Breakdown
 
-Tasks are ordered by dependency and intended to be completed as small, independently testable changes. Make one descriptive commit per completed task. Open a PR for each independently reviewable change; combine closely related task commits when they form one coherent review, rather than creating a PR for every tiny checkbox. Merge only with review and required CI checks passing.
+Tasks are ordered by dependency and intended to be completed as small, independently testable changes. While this is a solo-developer repository, review each change before committing and push it to the default branch without a PR. Defer PR templates and branch protection until additional developers join. Starting in Phase 2, make one descriptive commit per completed task.
 
 The project starts as a documentation-only folder, not a Git repository. Keep development local and Azure-free until the explicit cloud gates below. Never commit secrets, local databases, Terraform state, or saved plan files. Do not mark a task done until its acceptance checks pass.
 
@@ -15,11 +15,10 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 
 ## Phase 1: Git and GitHub from the empty folder
 
-- [ ] Initialize Git in this project folder and check in the reviewed specs as a descriptive bootstrap commit; do not include unrelated files or secrets.
-- [ ] Create the GitHub repository, add the remote, push the default branch, and confirm the local/remote history is consistent.
-- [ ] Add contribution guidance with task-sized commits, branch/PR workflow, review expectations, test evidence, and no direct pushes to the protected default branch.
-- [ ] Add a PR template and issue/task references so each change explains intent, scope, verification, and any operational impact.
-- [ ] Configure branch protection/rulesets and required CI checks once the CI workflow exists; require review and prevent force pushes to the default branch.
+- [x] Initialize Git in this project folder and check in the reviewed specs as a descriptive bootstrap commit; do not include unrelated files or secrets.
+- [x] Create the GitHub repository, add the remote, push the default branch, and confirm the local/remote history is consistent.
+- [x] Add contribution guidance for the solo-developer workflow, task-sized commits, review expectations, test evidence, and safe pushes.
+- [x] Defer PR templates and branch protection until additional developers join; configure required review and CI checks when a collaborative workflow is introduced.
 
 ## Phase 2: Runnable application skeleton and CI
 
