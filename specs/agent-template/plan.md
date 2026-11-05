@@ -77,6 +77,7 @@ GitHub Actions -- OIDC federation --> Azure deployment identity (later)
 
 ## Technology choices
 
+- **Supported runtimes and dependency locks:** Support Python 3.13.x and Node.js 24.x. Pin the Python minor line in `.python-version` and the Node major line in `.nvmrc`; declare matching project runtime constraints in the backend and frontend manifests. Use `uv` with `pyproject.toml` and a committed `uv.lock` for Python, and npm with a committed `package-lock.json` for JavaScript. Reproduce installs with `uv sync --frozen` and `npm ci`; update dependencies intentionally, regenerate the lockfiles, and rerun the relevant checks. Add the manifests and lockfiles with the app scaffold.
 - **Frontend:** React, TypeScript, Vite, Material UI, and the Entra-supported MSAL React/browser libraries.
 - **Authentication and password recovery:** Microsoft Entra External ID customer identity. Entra owns password lifecycle, email verification, sign-in, sign-out, and forgot/reset-password flow. The SPA uses Authorization Code with PKCE; the API independently validates bearer tokens.
 - **API:** FastAPI with typed request/response models, Pydantic settings, and generated OpenAPI.
