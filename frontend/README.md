@@ -4,6 +4,7 @@ Use Node.js 24.x as pinned in the repository root `.nvmrc`. From the repository 
 
 ```bash
 cd frontend
+cp .env.example .env
 npm ci
 npm run dev
 ```
