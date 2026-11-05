@@ -14,10 +14,14 @@ Build a web application from an empty project folder where a person can register
 - The only subscription is free. Do not model a plan, tier, mode, price, billing account, or tenant.
 - A subscription is created automatically after successful registration and is never created from user-supplied identity data.
 - Microsoft Entra External ID is the system of record for credentials, email/password authentication, email verification, and password recovery. The application stores no password, password hash, or reset token.
+- Entra External ID is the selected identity provider, but its tenant and SPA/API registrations are not yet provisioned. Tenant/issuer, client IDs, redirect and logout URIs, user-flow IDs, API audience, and delegated scope remain TBD; defer real sign-up acceptance tests until these values are configured and verified.
 - The validated `(issuer, subject)` pair from an access token is the stable user identity. Email is a display/contact snapshot, not an identifier or authorization key.
-- The first release has one persistent chat thread per subscription. Azure AI Foundry Agent Service owns the thread and message history; the application stores the Foundry thread identifier on the subscription so access is bound to the authenticated user.
-- The MVP agent is intentionally simple: no custom persona/system prompt, tools, retrieval/knowledge base, or application-managed guardrail framework. Only minimal provider-required configuration is allowed; provider/model defaults and mandatory platform safety behavior still apply. Confirm the selected model/agent deployment before live Foundry use.
+- Each person has exactly one free subscription and one persistent chat thread. Azure AI Foundry Agent Service owns the thread and message history; the application stores the Foundry thread identifier on the subscription so access is bound to the authenticated user.
+- The MVP does not support resetting or replacing the conversation. Retain the thread while the account is active; on a user-requested account deletion, delete the subscription and its Foundry thread. Verify and test the provider's deletion semantics before production; if provider-side deletion is unavailable or delayed, agree and disclose the actual behavior before launch.
+- Azure AI Foundry is the intended hosted agent provider, but no project, model deployment, or region is selected or provisioned yet. Choose them immediately before live integration or provisioning, after reviewing availability, quotas, data handling, and cost; until then, keep the provider interface isolated and use the deterministic local fake. The MVP agent is intentionally simple: no custom persona/system prompt, tools, retrieval/knowledge base, or application-managed guardrail framework. Only minimal provider-required configuration is allowed; provider/model defaults and mandatory platform safety behavior still apply.
 - The initial deployment is a single development environment. A USD 200 Free Trial credit is not treated as a monthly budget; resource and usage estimates must be reviewed before provisioning.
+- The initial dev/staging spending ceiling is USD 50 per month, separate from Free Trial credit. Do not provision if the itemized expected monthly cost exceeds this ceiling without explicit approval of a revised ceiling; budgets and alerts are not hard spending caps.
+- Initial dev/staging targets are complete chat response p95 at or below 20 seconds, at least 5 concurrent chat requests, and 99% monthly API availability measured by readiness probes. These are validation targets, not production SLOs.
 - Azure resources for the new project are isolated in its own resource group, Terraform state, identity configuration, and container registry. Do not import or modify resources from another project.
 - CI is established as soon as the application skeleton exists and does not require Azure credentials. Azure CD follows only after the dev environment, costs, and deployment identity have been reviewed.
 - Git commits are task-sized and descriptive. Each completed task is committed separately; PRs are opened for independently reviewable changes and may group tightly related task commits into one coherent review.
@@ -54,7 +58,8 @@ Registration and subscription creation must be safe to retry. Concurrent first r
 - An authenticated user can send a message and receive a response from the configured Azure AI Foundry agent.
 - The API derives the subscription from the validated identity; callers cannot select a subscription, user, tenant, agent, or Foundry thread belonging to someone else.
 - The user's Foundry thread ID is created on first chat use and stored on that user's subscription row. Thread lookups and updates are always scoped by subscription.
-- The first release has one ongoing thread per subscription; clearing or starting another conversation is out of scope unless explicitly approved.
+- The first release has one ongoing thread per subscription; resetting, clearing, or starting another conversation is out of scope unless explicitly approved.
+- Retain the thread while the account is active. Account deletion removes the subscription and its associated Foundry thread; verify and test provider-side deletion behavior before production.
 - The frontend supports an in-progress state, retryable failures, and cancellation where supported by the Foundry API.
 - Chat text is not included in application, Azure Monitor, or security logs.
 - Model and agent identifiers are deployment configuration, never accepted from an unauthenticated or arbitrary client request.
@@ -87,7 +92,7 @@ Constraints and rules:
 - Add a unique constraint on `(identity_issuer, identity_subject)` to make subscription provisioning idempotent.
 - Do not add a `tenant_id`, subscription type/plan, price, billing status, password, password hash, or reset token.
 - `email_snapshot` may be refreshed from a validated token only according to a documented policy; an email change must not create another subscription.
-- Do not store chat messages in PostgreSQL for the MVP. Azure AI Foundry Agent Service owns the thread history. Define retention and deletion behavior before production.
+- Do not store chat messages in PostgreSQL for the MVP. Azure AI Foundry Agent Service owns the thread history. Retain it while the account is active; account deletion removes the subscription and its associated Foundry thread. Verify and test provider-side deletion behavior before production, and disclose any provider limitations before launch.
 - The Foundry thread ID is a sensitive server-side reference; never expose it as an authorization credential.
 
 ## API requirements
@@ -138,6 +143,7 @@ Additional API behavior:
 15. A local fake-agent flow can be exercised end-to-end, and local telemetry can be inspected without sending chat content or credentials to telemetry.
 16. The initial agent has no app-defined persona, custom instructions, tools, retrieval, or elaborate orchestration; provider-required defaults are documented rather than misrepresented.
 17. Production is not declared ready until separate production infrastructure/identity and approvals exist, agreed SLOs are measured, alert delivery and runbooks are verified, and backup/restore and rollback have been exercised.
+18. The MVP does not reset conversations; account deletion removes the subscription and its Foundry thread, with provider-side deletion behavior verified before production.
 
 ## Production release criteria
 
@@ -162,6 +168,7 @@ A successful local or dev deployment is not a production release. Production rel
 - Keep chat content out of telemetry and diagnostics. Configure access control and retention for Azure AI Foundry conversation data.
 - Use OpenTelemetry-compatible instrumentation, local-only tooling during development, and Azure-native Azure Monitor, Log Analytics, and Application Insights after Azure approval. Do not deploy a self-hosted monitoring stack to production.
 - Estimate database, Container Apps, Foundry model/agent usage, networking, registry, secrets, and monitoring costs before provisioning. Set cost alerts/budgets where available; alerts do not guarantee a hard spending cap.
+- Keep the initial dev/staging estimate at or below the approved USD 50 monthly ceiling, separate from trial credit. Revisit and obtain explicit approval before provisioning if the itemized estimate exceeds it. Validate the initial targets of chat response p95 ≤ 20 seconds, at least 5 concurrent chat requests, and 99% monthly API availability; these are not production SLOs.
 
 ## Out of scope for the first release
 
@@ -174,8 +181,8 @@ A successful local or dev deployment is not a production release. Production rel
 
 ## Decisions requiring confirmation before implementation/provisioning
 
-1. Confirm the Entra External ID tenant, application registrations, user-flow identifiers, and API scope.
-2. Confirm which Azure AI Foundry project/agent/model deployment is approved, its region, data handling, and usage limits.
-3. Confirm whether a single persistent thread per subscription is the intended MVP and agree conversation retention/deletion.
-4. Agree a monthly spend ceiling separately from the Free Trial credit balance.
+1. Provision and configure the Entra External ID tenant, application registrations, user-flow identifiers, and API scope before real sign-up tests.
+2. Select the Azure AI Foundry project/model deployment and region before live integration or provisioning, after reviewing availability, quotas, data handling, and cost.
+3. Verify that the selected Azure region supports the chosen model and database under the subscription's current limits.
+4. Review the itemized monthly cost against the approved USD 50 dev/staging ceiling before provisioning; obtain explicit approval for any increase. Validate the initial dev/staging performance and availability targets above; agree separate production SLOs before production.
 5. Check Azure service and model availability in the chosen region and obtain a complete estimate before provisioning.

@@ -82,7 +82,7 @@ GitHub Actions -- OIDC federation --> Azure deployment identity (later)
 - **API:** FastAPI with typed request/response models, Pydantic settings, and generated OpenAPI.
 - **Persistence:** PostgreSQL through SQLAlchemy 2.x and Alembic. One application-owned table, `subscriptions`; no tenant, client, password, or chat-message tables.
 - **Identity mapping:** Unique `(issuer, subject)` pair from the validated token. Email is a non-authoritative snapshot only.
-- **Agent:** Keep Azure AI Foundry Agent Service as the intended hosted provider, accessed server-side by FastAPI using managed identity. Keep a typed provider boundary and deterministic fake for local development/tests. The initial product agent is deliberately plain: no app-authored persona or custom instructions/system prompt, tools, knowledge base, or application-managed guardrails. Provider/model defaults and mandatory platform safety behavior still apply; do not promise a behavior-free model. Define the concrete agent/model deployment before enabling live provider calls.
+- **Agent:** Keep Azure AI Foundry Agent Service as the intended hosted provider, accessed server-side by FastAPI using managed identity. Keep a typed provider boundary and deterministic fake for local development/tests. No project, model deployment, or region is selected yet; choose them immediately before live integration or provisioning, after reviewing availability, quotas, data handling, and cost. The initial product agent is deliberately plain: no app-authored persona or custom instructions/system prompt, tools, knowledge base, or application-managed guardrails. Provider/model defaults and mandatory platform safety behavior still apply; do not promise a behavior-free model.
 - **Conversation storage:** Foundry Agent Service owns thread/message history. The `foundry_thread_id` stored on the subscription binds the one MVP thread to its owner. Retention/deletion must be confirmed before production.
 - **Hosting:** Azure Container Apps for the web frontend and API. Deploy separately so the API can remain private or restricted if the selected topology permits; only the browser-facing app should be public by default.
 - **Registry:** Azure Container Registry with immutable commit-SHA or digest references and admin credentials disabled where supported.
@@ -99,6 +99,7 @@ The operation does not accept a user ID, email, subscription type, Foundry threa
 
 ## Authentication design
 
+- Entra External ID is selected, but the tenant and SPA/API app registrations are not provisioned. Keep tenant/issuer, client IDs, redirect/logout URIs, user-flow IDs, API audience, and delegated scope as TBD; defer real sign-up acceptance tests until configured and verified.
 - Configure Entra External ID customer tenant and separate SPA/API app registrations with the API audience and least-privilege delegated scope.
 - Configure self-service email/password sign-up and password reset; verify the exact provider-supported flow before promising behavior.
 - Configure only approved frontend redirect/logout URLs and use PKCE. The SPA has no client secret.
@@ -163,19 +164,18 @@ Keep the frontend and backend independently buildable and testable. Share only t
 ## Cost and security gates
 
 - A USD 200 Free Trial credit is a balance, not a monthly spending target or hard spending cap.
+- The approved initial dev/staging ceiling is USD 50 per month, separate from trial credit. Do not provision if the itemized expected monthly cost exceeds it without explicit approval of a revised ceiling.
 - Before applying: check the credit remaining, subscription spending limit, Azure service and model regional availability, fixed monthly resources, Foundry token/model costs, telemetry ingestion, networking, database/storage, and taxes.
 - Configure budgets/alerts where supported, while documenting that alerts may lag and do not guarantee a hard cap.
 - Begin with one dev environment, scale-to-zero where appropriate, low-cost database sizing only if available, bounded Foundry quotas, and log retention sized to need.
 - Do not provision staging or production until dev behavior, data retention, and monthly cost are reviewed.
+- Initial dev/staging targets: complete chat response p95 ≤ 20 seconds, at least 5 concurrent chat requests, and 99% monthly API availability measured by readiness probes. Validate these targets against actual service quotas and costs; they are not production SLOs.
 
 ## Open decisions to resolve before the affected tasks
 
-1. What are the GitHub repository name/owner and default branch?
-2. Which Entra External ID tenant, application IDs, redirect URIs, user flow, and API scope are authoritative?
-3. Which Foundry project/model deployment and region will be used? The app agent is intentionally plain; confirm any provider-required configuration and safety behavior.
-4. Is one persistent thread per subscription sufficient for the MVP? What are reset, retention, and deletion expectations?
-5. What is the approved monthly spend ceiling, separate from remaining trial credit?
-6. Which Azure region supports the chosen AI model and database under the current subscription's limits?
-7. What measurable initial chat latency, concurrency, and availability targets should dev/staging validate?
+1. Provision and configure the Entra External ID tenant and SPA/API registrations before real sign-up tests.
+2. Select the Foundry project/model deployment and region before live integration or provisioning, after checking data handling, regional availability, quotas, and costs.
+3. Verify the selected region supports the chosen model and database under the subscription's current limits.
+4. Keep the itemized dev/staging estimate within the approved USD 50 monthly ceiling; obtain explicit approval before exceeding it. Validate the initial dev/staging targets documented in [`spec.md`](./spec.md), and agree separate production SLOs before production.
 
-Resolve GitHub naming and local development conventions before the initial implementation. Resolve Entra details before real sign-up testing; resolve Foundry, data lifecycle, region, and spend before provisioning/integration with live Azure resources.
+The MVP conversation model and lifecycle are resolved in [`spec.md`](./spec.md): one free subscription and persistent thread per person, no reset, retention while the account is active, and subscription/thread deletion on account deletion. Verify provider-side deletion behavior before production. The dev/staging budget and initial performance/availability targets are also agreed; verify actual costs and quotas before provisioning. Resolve Entra details before real sign-up testing and Foundry/region details before live integration or provisioning.

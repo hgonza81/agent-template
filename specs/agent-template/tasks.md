@@ -6,12 +6,12 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 
 ## Phase 0: Product decisions and delivery contract
 
-- [ ] Confirm repository name, GitHub owner, default branch, and initial visibility.
-- [ ] Confirm that the MVP is one free subscription per person and one persistent conversation per subscription; define reset, retention, and deletion expectations.
-- [ ] Confirm the plain-agent boundary: no custom persona/system prompt, tools, retrieval, or elaborate agent orchestration; allow only minimal provider-required configuration and document defaults.
-- [ ] Confirm the target identity provider setup: Entra External ID tenant, SPA/API registrations, redirect/logout URLs, user-flow IDs, API audience, and delegated scope. Defer real sign-up acceptance tests until these values exist.
-- [ ] Confirm target Foundry project/model deployment and region before any live provider integration or provisioning; keep the interface provider-isolated until then.
-- [ ] Define a monthly spend ceiling separately from Free Trial credit, plus initial latency, concurrency, and availability targets. Defer Azure provisioning until current costs and quotas are verified.
+- [x] Confirm repository name, GitHub owner, default branch, and initial visibility.
+- [x] Confirm that the MVP is one free subscription per person and one persistent conversation per subscription; define reset, retention, and deletion expectations.
+- [x] Confirm the plain-agent boundary: no custom persona/system prompt, tools, retrieval, or elaborate agent orchestration; allow only minimal provider-required configuration and document defaults.
+- [x] Confirm Entra External ID as the target identity provider; record tenant and SPA/API registration values as pending until provisioned. Defer real sign-up acceptance tests until these values are configured and verified.
+- [x] Confirm Azure AI Foundry as the intended provider; defer selecting a project/model deployment and region until before live integration or provisioning, after reviewing availability, quotas, data handling, and cost. Keep the interface provider-isolated until then.
+- [x] Define a USD 50/month dev/staging spend ceiling separately from Free Trial credit, plus initial targets of chat response p95 ≤ 20 seconds, 5 concurrent chat requests, and 99% monthly API availability. Defer Azure provisioning until itemized costs and quotas are verified; obtain explicit approval before exceeding the ceiling.
 
 ## Phase 1: Git and GitHub from the empty folder
 
