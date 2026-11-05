@@ -5,6 +5,7 @@ From the repository root, install the pinned Python runtime and start the API:
 ```bash
 uv python install 3.13
 cd backend
+cp .env.example .env
 uv sync --frozen
 uv run uvicorn agent_template_api.main:app --reload
 ```

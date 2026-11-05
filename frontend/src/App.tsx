@@ -1,4 +1,6 @@
-import { Container, CssBaseline, Stack, Typography } from '@mui/material'
+import { Container, CssBaseline, Link, Stack, Typography } from '@mui/material'
+
+import { apiBaseUrl } from './config'
 
 function App() {
   return (
@@ -12,6 +14,9 @@ function App() {
           <Typography color="text.secondary">
             Frontend application scaffold.
           </Typography>
+          <Link href={`${apiBaseUrl}/docs`} target="_blank" rel="noreferrer">
+            API documentation
+          </Link>
         </Stack>
       </Container>
     </>

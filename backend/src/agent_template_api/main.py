@@ -1,7 +1,21 @@
+from importlib.metadata import version
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from agent_template_api.settings import get_settings
+
+settings = get_settings()
 
 app = FastAPI(
     title="Agent Template API",
-    version="0.1.0",
-    description="Local-first API for the Agent Template application.",
+    version=version("agent-template-api"),
+    description="API for the Agent Template application.",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_allowed_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
