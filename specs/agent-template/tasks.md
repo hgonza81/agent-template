@@ -23,7 +23,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 ## Phase 2: Runnable application skeleton and CI
 
 - [x] Agree and pin supported Python and Node versions; choose reproducible dependency/lockfile workflows and document how to update them.
-- [ ] Scaffold independently runnable `backend/` (FastAPI) and `frontend/` (React, TypeScript, Vite, MUI) applications in the existing repository layout.
+- [x] Scaffold independently runnable `backend/` (FastAPI) and `frontend/` (React, TypeScript, Vite, MUI) applications in the existing repository layout.
 - [ ] Add `.gitignore`, `.dockerignore`, safe `.env.example` files, and configuration validation; ensure secrets and local data are excluded.
 - [ ] Add a minimal API liveness route and frontend shell; verify both start locally with documented commands.
 - [ ] Add formatting/linting, strict type checking, and unit tests for each app, with reproducible commands (and Make targets if useful).
