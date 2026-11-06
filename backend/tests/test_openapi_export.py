@@ -9,6 +9,10 @@ def test_openapi_export_writes_current_application_schema(
     monkeypatch: MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("CORS_ALLOWED_ORIGINS", '["http://127.0.0.1:5173"]')
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql+psycopg://agent_template:local-dev-only@127.0.0.1:5433/agent_template",
+    )
 
     from agent_template_api.export_openapi import write_openapi
     from agent_template_api.main import app

@@ -1,12 +1,15 @@
 from functools import lru_cache
 from urllib.parse import urlsplit
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
 
 
 class Settings(BaseSettings):
     cors_allowed_origins: list[str]
+    database_url: SecretStr
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -14,6 +17,23 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
     )
+
+    @field_validator("database_url")
+    @classmethod
+    def validate_database_url(cls, database_url: SecretStr) -> SecretStr:
+        try:
+            parsed = make_url(database_url.get_secret_value())
+        except ArgumentError as error:
+            raise ValueError("DATABASE_URL must be a valid PostgreSQL URL") from error
+        if (
+            parsed.drivername != "postgresql+psycopg"
+            or parsed.host is None
+            or parsed.database is None
+        ):
+            raise ValueError(
+                "DATABASE_URL must be a PostgreSQL URL using the psycopg driver"
+            )
+        return database_url
 
     @field_validator("cors_allowed_origins")
     @classmethod

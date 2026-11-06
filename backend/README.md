@@ -23,6 +23,51 @@ uv run python -m agent_template_api.export_openapi
 
 This updates the checked-in `../openapi/openapi.json` contract.
 
+## Local PostgreSQL
+
+PostgreSQL runs in Docker Compose. Docker Desktop (or another Docker engine with Compose) must be running. From the repository root, start the database and wait for its health check:
+
+```bash
+docker compose up -d --wait postgres
+```
+
+The service binds only to `127.0.0.1:5433` on your computer (container port `5432`).
+It creates an application database (`agent_template`) and a separate test database (`agent_template_test`) on the first start. These databases use disposable local-only credentials defined in `compose.yaml`. The named volume preserves data when the service is stopped.
+
+Copy `backend/.env.example` to `backend/.env`, then run the initial migration
+and start the API from `backend/`:
+
+```bash
+uv sync --frozen
+uv run alembic upgrade head
+uv run uvicorn agent_template_api.main:app --reload
+```
+
+After adding a model, create a migration with
+`uv run alembic revision --autogenerate -m "describe the schema change"`.
+Review the generated migration before applying it with `uv run alembic upgrade head`.
+The initial `0001_baseline` revision is intentionally empty; schema migrations
+are added with their corresponding models.
+
+Run tests against the separate test database by overriding the connection URL:
+
+```bash
+DATABASE_URL=postgresql+psycopg://agent_template:local-dev-only@127.0.0.1:5433/agent_template_test uv run pytest
+```
+
+To reset only the test database:
+
+```bash
+docker compose exec -T postgres dropdb --if-exists -U agent_template agent_template_test
+docker compose exec -T postgres createdb -U agent_template --owner=agent_template agent_template_test
+DATABASE_URL=postgresql+psycopg://agent_template:local-dev-only@127.0.0.1:5433/agent_template_test uv run alembic upgrade head
+```
+
+Stop PostgreSQL and preserve both databases with `docker compose down`. To
+delete the local databases and all their data, use `docker compose down --volumes`
+and start again with `docker compose up -d --wait postgres`; the initialization
+script recreates the test database only when the data volume is empty.
+
 ## Quality checks
 
 Run these commands from `backend/` after `uv sync --frozen`:
