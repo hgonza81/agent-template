@@ -46,10 +46,16 @@ uv run uvicorn agent_template_api.main:app --reload
 After adding a model, create a migration with
 `uv run alembic revision --autogenerate -m "describe the schema change"`.
 Review the generated migration before applying it with `uv run alembic upgrade head`.
-The initial `0001_baseline` revision is intentionally empty; schema migrations
-are added with their corresponding models.
+Each schema change is committed with its model and migration.
+The `subscriptions` table stores a UUID, the validated issuer/subject identity
+pair, an optional email snapshot, a UTC-aware start time, and an optional
+server-managed Foundry thread ID. The issuer/subject pair has a database
+uniqueness constraint; `started_at` defaults to UTC-aware application time or
+the database's current timestamp, and connections use the UTC time zone.
 
-Run tests against the separate test database by overriding the connection URL:
+Run the backend tests against the separate test database by overriding the
+connection URL. The subscription model integration tests verify uniqueness,
+UUID generation, UTC timestamps, and apply pending Alembic migrations:
 
 ```bash
 DATABASE_URL=postgresql+psycopg://agent_template:local-dev-only@127.0.0.1:5433/agent_template_test uv run pytest

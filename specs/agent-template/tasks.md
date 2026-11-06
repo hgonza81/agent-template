@@ -37,7 +37,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 ## Phase 3: Local persistence, health, and observability foundation
 
 - [x] Add local PostgreSQL configuration and a disposable test database/service; document startup, migration, reset, and shutdown.
-- [ ] Add the single `subscriptions` SQLAlchemy model and Alembic migration with unique `(identity_issuer, identity_subject)` and UTC start-time behavior.
+- [x] Add the single `subscriptions` SQLAlchemy model and Alembic migration with unique `(identity_issuer, identity_subject)` and UTC start-time behavior.
 - [ ] Add `GET /api/v1/health/live` that does not call external dependencies and `GET /api/v1/health/ready` that reflects required dependency availability.
 - [ ] Add privacy-safe structured API logs and request/correlation IDs; ensure error responses do not leak stack traces or configuration secrets.
 - [ ] Add OpenTelemetry-compatible API traces and metrics as database/API behavior is implemented, with optional local OTLP collection/viewing instructions.

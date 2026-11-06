@@ -11,10 +11,27 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      CORS_ALLOWED_ORIGINS: '["http://127.0.0.1:5173"]'
+      DATABASE_URL: postgresql+psycopg://agent_template:local-dev-only@127.0.0.1:5432/agent_template_test
     defaults:
       run:
         shell: bash
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac
+        env:
+          POSTGRES_DB: agent_template_test
+          POSTGRES_USER: agent_template
+          POSTGRES_PASSWORD: local-dev-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agent_template -d agent_template_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -50,9 +67,6 @@ jobs:
         run: uv run pytest
 
       - name: Export OpenAPI contract
-        env:
-          CORS_ALLOWED_ORIGINS: '["http://127.0.0.1:5173"]'
-          DATABASE_URL: postgresql+psycopg://agent_template:local-dev-only@127.0.0.1:5433/agent_template
         run: |
           uv run python -m agent_template_api.export_openapi
           git -C .. diff --exit-code -- openapi/openapi.json
