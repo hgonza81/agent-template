@@ -27,6 +27,31 @@
         },
         "summary": "Health Live"
       }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "operationId": "health_ready_api_v1_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Ready Api V1 Health Ready Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "description": "A required dependency is unavailable"
+          }
+        },
+        "summary": "Health Ready"
+      }
     }
   }
 }

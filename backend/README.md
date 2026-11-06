@@ -10,6 +10,10 @@ migrations, and launches the development server. The API is available at
 `http://127.0.0.1:8000`; interactive OpenAPI documentation is at `/docs`.
 Start the frontend separately with `make frontend`.
 
+The liveness endpoint (`/api/v1/health/live`) checks that the process is
+running without contacting dependencies. The readiness endpoint
+(`/api/v1/health/ready`) returns `503` when PostgreSQL is unavailable.
+
 ## OpenAPI contract
 
 FastAPI defines the API contract. After changing backend routes or models, run
