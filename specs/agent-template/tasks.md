@@ -26,8 +26,8 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Scaffold independently runnable `backend/` (FastAPI) and `frontend/` (React, TypeScript, Vite, MUI) applications in the existing repository layout.
 - [x] Add `.gitignore`, `.dockerignore`, safe `.env.example` files, and configuration validation; ensure secrets and local data are excluded.
 - [x] Add a minimal API liveness route and frontend shell; verify both start locally with documented commands.
-- [ ] Add formatting/linting, strict type checking, and unit tests for each app, with reproducible commands (and Make targets if useful).
-- [ ] Add the first GitHub Actions CI workflow: run backend/frontend checks and production build on PRs and pushes; use least-privilege permissions and no Azure credentials.
+- [x] Add formatting/linting, strict type checking, and unit tests for each app, with reproducible commands (and Make targets if useful).
+- [x] Add the first GitHub Actions CI workflow: run backend/frontend checks and production build on PRs and pushes; use least-privilege permissions and no Azure credentials.
 - [ ] Add dependency and secret scanning to CI; make failure visible and do not silently suppress findings.
 - [ ] Configure branch protection to require the passing CI checks; verify a deliberately failing check blocks merge.
 - [ ] Define OpenAPI as the API contract and generate/share frontend types rather than hand-maintaining duplicate schemas.
