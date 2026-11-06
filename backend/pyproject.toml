@@ -35,6 +35,7 @@ plugins = ["pydantic.mypy"]
 dev = [
     "httpx2>=2.16.0",
     "mypy>=2.4.1",
+    "pip-audit>=2.10.1",
     "pytest>=9.2.0",
     "ruff>=0.17.4",
 ]
