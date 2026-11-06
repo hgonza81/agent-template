@@ -1,90 +1,54 @@
 # Agent Template API
 
-From the repository root, install the pinned Python runtime and start the API:
+Run the following commands from the repository root. Start with `make setup`
+to create local environment files and install the backend and frontend
+dependencies. Docker Desktop (or another Docker engine with Compose) must be
+running.
 
-```bash
-uv python install 3.13
-cd backend
-cp .env.example .env
-uv sync --frozen
-uv run uvicorn agent_template_api.main:app --reload
-```
-
-The API is available at `http://127.0.0.1:8000`; interactive OpenAPI documentation is at `/docs`. 
+Start the API with `make backend`. It starts PostgreSQL, applies pending
+migrations, and launches the development server. The API is available at
+`http://127.0.0.1:8000`; interactive OpenAPI documentation is at `/docs`.
+Start the frontend separately with `make frontend`.
 
 ## OpenAPI contract
 
-FastAPI defines the API contract. Export the current schema after changing backend
-routes or models:
-
-```bash
-uv run python -m agent_template_api.export_openapi
-```
-
-This updates the checked-in `../openapi/openapi.json` contract.
+FastAPI defines the API contract. After changing backend routes or models, run
+`make openapi` to update `openapi/openapi.json`. Run `make api-types` to also
+regenerate the frontend types. Commit both generated files; do not edit the
+frontend generated file by hand.
 
 ## Local PostgreSQL
 
-PostgreSQL runs in Docker Compose. Docker Desktop (or another Docker engine with Compose) must be running. From the repository root, start the database and wait for its health check:
-
-```bash
-docker compose up -d --wait postgres
-```
-
-The service binds only to `127.0.0.1:5433` on your computer (container port `5432`).
-It creates an application database (`agent_template`) and a separate test database (`agent_template_test`) on the first start. These databases use disposable local-only credentials defined in `compose.yaml`. The named volume preserves data when the service is stopped.
-
-Copy `backend/.env.example` to `backend/.env`, then run the initial migration
-and start the API from `backend/`:
-
-```bash
-uv sync --frozen
-uv run alembic upgrade head
-uv run uvicorn agent_template_api.main:app --reload
-```
+PostgreSQL runs in Docker Compose and binds only to `127.0.0.1:5433` on your
+computer (container port `5432`). `make backend`, `make test-backend`, and
+`make migrate` start it and wait for its health check automatically. The
+container creates the application database (`agent_template`) and a separate
+test database (`agent_template_test`) on first start. The local-only
+credentials are defined in `compose.yaml`; the named volume preserves data
+when the service is stopped.
 
 After adding a model, create a migration with
-`uv run alembic revision --autogenerate -m "describe the schema change"`.
-Review the generated migration before applying it with `uv run alembic upgrade head`.
-Each schema change is committed with its model and migration.
+`make migration MESSAGE="describe the schema change"`. Review the generated
+migration before applying it with `make migrate`. Each schema change is
+committed with its model and migration.
+
 The `subscriptions` table stores a UUID, the validated issuer/subject identity
 pair, an optional email snapshot, a UTC-aware start time, and an optional
 server-managed Foundry thread ID. The issuer/subject pair has a database
 uniqueness constraint; `started_at` defaults to UTC-aware application time or
 the database's current timestamp, and connections use the UTC time zone.
 
-Run the backend tests against the separate test database by overriding the
-connection URL. The subscription model integration tests verify uniqueness,
-UUID generation, UTC timestamps, and apply pending Alembic migrations:
+Run backend tests with `make test-backend`, or run both backend and frontend
+tests with `make test`. The integration tests use only `agent_template_test`
+and verify uniqueness, UUID generation, UTC timestamps, and migrations.
 
-```bash
-DATABASE_URL=postgresql+psycopg://agent_template:local-dev-only@127.0.0.1:5433/agent_template_test uv run pytest
-```
-
-To reset only the test database:
-
-```bash
-docker compose exec -T postgres dropdb --if-exists -U agent_template agent_template_test
-docker compose exec -T postgres createdb -U agent_template --owner=agent_template agent_template_test
-DATABASE_URL=postgresql+psycopg://agent_template:local-dev-only@127.0.0.1:5433/agent_template_test uv run alembic upgrade head
-```
-
-Stop PostgreSQL and preserve both databases with `docker compose down`. To
-delete the local databases and all their data, use `docker compose down --volumes`
-and start again with `docker compose up -d --wait postgres`; the initialization
-script recreates the test database only when the data volume is empty.
+`make db-reset-test` recreates only the test database and reapplies migrations;
+all data in that database will be deleted. Stop PostgreSQL and preserve its
+data with `make db-down`. Do not remove the Compose volume unless you intend to
+delete both local databases and all their data.
 
 ## Quality checks
 
-Run these commands from `backend/` after `uv sync --frozen`:
-
-```bash
-uv run ruff format --check .
-uv run ruff check .
-uv run mypy src tests
-uv run pytest
-uv export --locked --format requirements.txt --no-emit-project \
-  --output-file "${TMPDIR:-/tmp}/agent-template-backend-requirements.txt"
-uv run pip-audit --strict --require-hashes \
-  --requirement "${TMPDIR:-/tmp}/agent-template-backend-requirements.txt"
-```
+Run `make check-backend` for Python formatting, lint, and type checks;
+`make check` runs the full test suite and frontend checks as well. Run
+`make audit` to scan Python and npm dependencies.
