@@ -21,4 +21,8 @@ uv run ruff format --check .
 uv run ruff check .
 uv run mypy src tests
 uv run pytest
+uv export --locked --format requirements.txt --no-emit-project \
+  --output-file "${TMPDIR:-/tmp}/agent-template-backend-requirements.txt"
+uv run pip-audit --strict --require-hashes \
+  --requirement "${TMPDIR:-/tmp}/agent-template-backend-requirements.txt"
 ```

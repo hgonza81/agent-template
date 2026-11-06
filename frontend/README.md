@@ -19,5 +19,6 @@ Run from `frontend/`:
 npm run lint
 npm run typecheck
 npm test
+npm audit --audit-level=low
 npm run build
 ```
