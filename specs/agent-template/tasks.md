@@ -1,6 +1,6 @@
 # Agent Template: Work Breakdown
 
-Tasks are ordered by dependency and intended to be completed as small, independently testable changes. While this is a solo-developer repository, review each change before committing and push it to the default branch without a PR. Defer PR templates and branch protection until additional developers join. Starting in Phase 2, make one descriptive commit per completed task.
+Tasks are ordered by dependency and intended to be completed as small, independently testable changes. This is a solo-developer repository: commit directly to `main`, without feature branches or PRs. CI runs on each push and reports failures, but cannot block a commit that has already been pushed. Defer PR templates and PR-based branch protection unless the workflow changes. Starting in Phase 2, make one descriptive commit per completed task.
 
 The project starts as a documentation-only folder, not a Git repository. Keep development local and Azure-free until the explicit cloud gates below. Never commit secrets, local databases, Terraform state, or saved plan files. Do not mark a task done until its acceptance checks pass.
 
@@ -18,7 +18,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Initialize Git in this project folder and check in the reviewed specs as a descriptive bootstrap commit; do not include unrelated files or secrets.
 - [x] Create the GitHub repository, add the remote, push the default branch, and confirm the local/remote history is consistent.
 - [x] Add contribution guidance for the solo-developer workflow, task-sized commits, review expectations, test evidence, and safe pushes.
-- [x] Defer PR templates and branch protection until additional developers join; configure required review and CI checks when a collaborative workflow is introduced.
+- [x] Defer PR templates and PR-based branch protection; keep the solo workflow on `main` without branches or PRs.
 
 ## Phase 2: Runnable application skeleton and CI
 
@@ -29,7 +29,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Add formatting/linting, strict type checking, and unit tests for each app, with reproducible commands (and Make targets if useful).
 - [x] Add the first GitHub Actions CI workflow: run backend/frontend checks and production build on PRs and pushes; use least-privilege permissions and no Azure credentials.
 - [x] Add dependency and secret scanning to CI; make failure visible and do not silently suppress findings.
-- [ ] Configure branch protection to require the passing CI checks; verify a deliberately failing check blocks merge.
+- [x] Keep direct pushes to `main`; CI runs on pushes and reports failures, with no PR merge gate.
 - [ ] Define OpenAPI as the API contract and generate/share frontend types rather than hand-maintaining duplicate schemas.
 
 **Why here:** CI is introduced before feature work so each later task is checked automatically. It can run without cloud resources or deployment credentials.

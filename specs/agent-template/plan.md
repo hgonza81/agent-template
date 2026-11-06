@@ -5,7 +5,7 @@
 This workspace currently contains specifications, not an initialized Git repository or application. Start by making the work reviewable, then deliver local, testable slices before introducing Azure:
 
 1. Agree the repository name/owner and a few product decisions that would otherwise change architecture. Keep undecided provider configuration behind an adapter.
-2. Initialize Git, make the first documentation/bootstrap commit, create the GitHub repository, push the default branch, and establish branch protection and PR conventions.
+2. Initialize Git, make the first documentation/bootstrap commit, create the GitHub repository, and push task-sized commits directly to `main`.
 3. Scaffold the smallest runnable frontend and FastAPI backend, local database/dev setup, and automated CI. CI belongs here—not near deployment—so every later task gets fast feedback.
 4. Implement the health, persistence, authentication, and chat slices locally. Use a deterministic fake agent until the real Foundry integration is approved and configured.
 5. Add privacy-safe logs and request correlation with the first API slice; introduce traces, metrics, and local telemetry viewing before the app grows. Move the same OpenTelemetry signals to Azure Monitor when Azure exists.
@@ -13,17 +13,16 @@ This workspace currently contains specifications, not an initialized Git reposit
 7. Provision a single Azure dev environment only after region, identity, data-retention, and cost reviews. Add Azure deployment automation only after that foundation works.
 8. Treat production as a separately approved release milestone, not an automatic consequence of a successful dev deployment.
 
-### Git, commits, and pull requests
+### Git and commits
 
 - Make one descriptive commit per completed task (or indivisible implementation unit), with tests and documentation included. Do not mark a task done until its checks pass.
-- Push task commits on a feature branch and open a PR for each independently reviewable change. Combine tightly coupled task commits into one PR when splitting them would make review or testing misleading; avoid a PR for every tiny checkbox.
-- Keep PRs small, explain the intent and trade-offs, link the task, include test results, and use CI-required status checks. Merge only after review and green checks.
-- Use a protected default branch and prohibit direct pushes once configured. Keep secrets, local databases, Terraform state, and plan files out of Git.
-- For the initial repository bootstrap, the first commit can be made locally before the GitHub remote exists; push it and open a PR for subsequent work once the remote and default branch are established.
+- Push each task commit directly to `main`; do not create feature branches or PRs in this solo-developer workflow.
+- CI runs on pushes to `main` and makes failed checks visible, but it does not prevent a commit already pushed from reaching `main`. Revisit PRs and required status checks if the collaboration workflow changes.
+- Keep secrets, local databases, Terraform state, and plan files out of Git.
 
 ### When CI/CD belongs
 
-- **CI starts with the app skeleton.** On each PR, run formatting/linting, type checks, unit tests, backend tests (with disposable PostgreSQL where needed), frontend production build, and secret/dependency checks. Add container and Terraform validation as those assets are introduced. CI must not need Azure credentials or provision resources.
+- **CI starts with the app skeleton.** On each push to `main`, run formatting/linting, type checks, unit tests, backend tests (with disposable PostgreSQL where needed), frontend production build, and secret/dependency checks. Add container and Terraform validation as those assets are introduced. CI must not need Azure credentials or provision resources.
 - **CD comes later.** First build reproducible containers and deploy manually or through a controlled dev workflow after the Azure dev foundation is approved. Then configure GitHub Actions OIDC, environment-scoped permissions, approvals, immutable image promotion, migrations, smoke tests, and rollback. Never put long-lived Azure credentials in GitHub secrets.
 - **Production CD is a further gate.** Use separate production state, identity, environment approvals, reviewed cost estimates, backup/restore evidence, SLOs, alert delivery, and a rollback plan.
 

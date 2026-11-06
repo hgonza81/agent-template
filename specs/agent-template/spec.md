@@ -24,7 +24,7 @@ Build a web application from an empty project folder where a person can register
 - Initial dev/staging targets are complete chat response p95 at or below 20 seconds, at least 5 concurrent chat requests, and 99% monthly API availability measured by readiness probes. These are validation targets, not production SLOs.
 - Azure resources for the new project are isolated in its own resource group, Terraform state, identity configuration, and container registry. Do not import or modify resources from another project.
 - CI is established as soon as the application skeleton exists and does not require Azure credentials. Azure CD follows only after the dev environment, costs, and deployment identity have been reviewed.
-- Git commits are task-sized and descriptive. Each completed task is committed separately; PRs are opened for independently reviewable changes and may group tightly related task commits into one coherent review.
+- Git commits are task-sized and descriptive. Each completed task is committed separately and pushed directly to `main`; this solo-developer workflow does not use feature branches or PRs. CI runs on pushes and reports failures, but does not block commits already pushed to `main`.
 
 ## Users and core flows
 
