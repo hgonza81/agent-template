@@ -25,7 +25,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Agree and pin supported Python and Node versions; choose reproducible dependency/lockfile workflows and document how to update them.
 - [x] Scaffold independently runnable `backend/` (FastAPI) and `frontend/` (React, TypeScript, Vite, MUI) applications in the existing repository layout.
 - [x] Add `.gitignore`, `.dockerignore`, safe `.env.example` files, and configuration validation; ensure secrets and local data are excluded.
-- [ ] Add a minimal API liveness route and frontend shell; verify both start locally with documented commands.
+- [x] Add a minimal API liveness route and frontend shell; verify both start locally with documented commands.
 - [ ] Add formatting/linting, strict type checking, and unit tests for each app, with reproducible commands (and Make targets if useful).
 - [ ] Add the first GitHub Actions CI workflow: run backend/frontend checks and production build on PRs and pushes; use least-privilege permissions and no Azure credentials.
 - [ ] Add dependency and secret scanning to CI; make failure visible and do not silently suppress findings.

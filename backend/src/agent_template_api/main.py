@@ -19,3 +19,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/api/v1/health/live")
+def health_live() -> dict[str, str]:
+    return {"status": "ok"}
