@@ -12,6 +12,17 @@ uv run uvicorn agent_template_api.main:app --reload
 
 The API is available at `http://127.0.0.1:8000`; interactive OpenAPI documentation is at `/docs`. 
 
+## OpenAPI contract
+
+FastAPI defines the API contract. Export the current schema after changing backend
+routes or models:
+
+```bash
+uv run python -m agent_template_api.export_openapi
+```
+
+This updates the checked-in `../openapi/openapi.json` contract.
+
 ## Quality checks
 
 Run these commands from `backend/` after `uv sync --frozen`:

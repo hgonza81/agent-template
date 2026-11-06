@@ -49,6 +49,13 @@ jobs:
       - name: Unit tests
         run: uv run pytest
 
+      - name: Export OpenAPI contract
+        env:
+          CORS_ALLOWED_ORIGINS: '["http://127.0.0.1:5173"]'
+        run: |
+          uv run python -m agent_template_api.export_openapi
+          git -C .. diff --exit-code -- openapi/openapi.json
+
       - name: Build backend package
         run: uv build
 
@@ -72,6 +79,11 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Generate frontend API types
+        run: |
+          npm run generate:api
+          git -C .. diff --exit-code -- frontend/src/generated/Api.ts
 
       - name: Audit npm dependencies
         run: npm audit --audit-level=low

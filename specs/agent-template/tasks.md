@@ -30,7 +30,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Add the first GitHub Actions CI workflow: run backend/frontend checks and production build on PRs and pushes; use least-privilege permissions and no Azure credentials.
 - [x] Add dependency and secret scanning to CI; make failure visible and do not silently suppress findings.
 - [x] Keep direct pushes to `main`; CI runs on pushes and reports failures, with no PR merge gate.
-- [ ] Define OpenAPI as the API contract and generate/share frontend types rather than hand-maintaining duplicate schemas.
+- [x] Define OpenAPI as the API contract and generate/share frontend types rather than hand-maintaining duplicate schemas.
 
 **Why here:** CI is introduced before feature work so each later task is checked automatically. It can run without cloud resources or deployment credentials.
 
