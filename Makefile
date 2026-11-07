@@ -1,8 +1,9 @@
 .DEFAULT_GOAL := help
 
 .PHONY: help setup backend-env frontend-env frontend-deps db-up db-down migrate \
-	migration backend frontend test test-backend test-frontend check-backend \
+	migration backend backend-otel frontend test test-backend test-frontend check-backend \
 	check-frontend test build audit format openapi api-types db-reset-test
+.PHONY: observability-up observability-down
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  make %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -37,6 +38,16 @@ migration: backend-env db-up ## Create a migration: make migration MESSAGE="desc
 
 backend: migrate ## Start the API (starts PostgreSQL and applies migrations)
 	cd backend && uv run uvicorn agent_template_api.main:app --reload --no-access-log
+
+backend-otel: migrate observability-up ## Start the API with local traces and metrics enabled
+	cd backend && OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 \
+		uv run uvicorn agent_template_api.main:app --reload --no-access-log
+
+observability-up: ## Start the optional local OTLP collector and viewers
+	docker compose --profile observability up -d --wait otel-collector prometheus jaeger
+
+observability-down: ## Stop the optional local telemetry services
+	docker compose --profile observability stop otel-collector prometheus jaeger
 
 frontend: frontend-env frontend-deps ## Start the frontend
 	cd frontend && npm run dev

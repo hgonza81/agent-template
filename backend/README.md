@@ -25,6 +25,32 @@ Set `LOG_LEVEL` in `backend/.env` to `DEBUG`, `INFO` (the default), `WARNING`,
 `ERROR`, or `CRITICAL` to control API request log verbosity; values are
 case-insensitive.
 
+## Optional local traces and metrics
+
+OpenTelemetry instrumentation is disabled unless
+`OTEL_EXPORTER_OTLP_ENDPOINT` is configured. To start the local OTLP collector,
+Jaeger trace viewer, and Prometheus metrics viewer, run from the repository
+root:
+
+```bash
+make observability-up
+```
+
+In another terminal, run `make backend-otel` to start the API with OTLP
+export enabled. Open Jaeger at `http://127.0.0.1:16686` to inspect traces and
+Prometheus at `http://127.0.0.1:9090` to query metrics such as
+`http_server_duration_milliseconds_count`. Stop only the optional telemetry
+services with `make observability-down`; `make db-down` also stops all Compose
+services without deleting persisted database data.
+
+The API instruments HTTP requests and SQLAlchemy operations. Before exporting,
+span attributes and metric labels are allowlisted; URLs, raw request paths,
+query strings, SQL statements, exception events, and exception descriptions
+are omitted. Trace route attributes use route templates. No telemetry leaves
+the machine unless an OTLP endpoint is explicitly configured. Stop the
+optional telemetry containers with `make observability-down`; `make db-down`
+stops the default Compose services and preserves the database volume.
+
 ## OpenAPI contract
 
 FastAPI defines the API contract. After changing backend routes or models, run

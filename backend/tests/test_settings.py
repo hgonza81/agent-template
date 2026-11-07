@@ -67,6 +67,42 @@ def test_rejects_unsupported_log_level() -> None:
         )
 
 
+def test_accepts_otlp_endpoint_without_enabling_it_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+    settings = Settings(
+        cors_allowed_origins=["http://127.0.0.1:5173"],
+        database_url="postgresql+psycopg://agent_template:local-dev-only@localhost/app",
+        _env_file=None,
+    )
+
+    assert settings.otel_exporter_otlp_endpoint is None
+
+
+def test_accepts_valid_otlp_endpoint() -> None:
+    settings = Settings(
+        cors_allowed_origins=["http://127.0.0.1:5173"],
+        database_url="postgresql+psycopg://agent_template:local-dev-only@localhost/app",
+        otel_exporter_otlp_endpoint="http://127.0.0.1:4318",
+        _env_file=None,
+    )
+
+    assert str(settings.otel_exporter_otlp_endpoint) == "http://127.0.0.1:4318/"
+
+
+def test_rejects_otlp_endpoint_with_credentials() -> None:
+    with pytest.raises(ValidationError, match="must not contain credentials"):
+        Settings(
+            cors_allowed_origins=["http://127.0.0.1:5173"],
+            database_url=(
+                "postgresql+psycopg://agent_template:local-dev-only@localhost/app"
+            ),
+            otel_exporter_otlp_endpoint="http://user:password@localhost:4318",
+            _env_file=None,
+        )
+
+
 def test_requires_cors_origins_when_no_environment_file_is_used(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

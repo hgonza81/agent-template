@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import SecretStr, field_validator
+from pydantic import AnyHttpUrl, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     cors_allowed_origins: list[str]
     database_url: SecretStr
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    otel_exporter_otlp_endpoint: AnyHttpUrl | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -24,6 +25,27 @@ class Settings(BaseSettings):
     @classmethod
     def normalize_log_level(cls, log_level: str) -> str:
         return log_level.upper()
+
+    @field_validator("otel_exporter_otlp_endpoint")
+    @classmethod
+    def validate_otel_exporter_otlp_endpoint(
+        cls,
+        endpoint: AnyHttpUrl | None,
+    ) -> AnyHttpUrl | None:
+        if endpoint is None:
+            return None
+        parsed = urlsplit(str(endpoint))
+        if (
+            parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError(
+                "OTEL_EXPORTER_OTLP_ENDPOINT must not contain credentials, "
+                "a query, or a fragment"
+            )
+        return endpoint
 
     @field_validator("database_url")
     @classmethod

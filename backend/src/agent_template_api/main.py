@@ -1,5 +1,7 @@
 import json
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from importlib.metadata import version
 from time import perf_counter
 from uuid import UUID, uuid4
@@ -8,6 +10,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from opentelemetry import trace
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -18,11 +21,22 @@ from starlette.responses import Response
 from agent_template_api.database import create_database_engine
 from agent_template_api.logging_config import configure_logging
 from agent_template_api.settings import get_settings
+from agent_template_api.telemetry import TelemetryRuntime, configure_telemetry
 
 settings = get_settings()
 configure_logging(settings.log_level)
 logger = logging.getLogger("agent_template_api.requests")
 database_engine = create_database_engine(settings)
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    try:
+        yield
+    finally:
+        telemetry_runtime = getattr(application.state, "telemetry_runtime", None)
+        if isinstance(telemetry_runtime, TelemetryRuntime):
+            telemetry_runtime.shutdown()
 
 
 class ErrorResponse(BaseModel):
@@ -34,6 +48,7 @@ app = FastAPI(
     title="Agent Template API",
     version=version("agent-template-api"),
     description="API for the Agent Template application.",
+    lifespan=lifespan,
 )
 
 
@@ -55,6 +70,7 @@ async def log_request(
     call_next: RequestResponseEndpoint,
 ) -> Response:
     request_id = get_request_id(request)
+    trace.get_current_span().set_attribute("request.id", request_id)
     started_at = perf_counter()
     request.state.error_category = None
 
@@ -183,3 +199,14 @@ def health_ready() -> dict[str, str]:
         ) from error
 
     return {"status": "ok"}
+
+
+app.state.telemetry_runtime = configure_telemetry(
+    app,
+    database_engine,
+    (
+        str(settings.otel_exporter_otlp_endpoint)
+        if settings.otel_exporter_otlp_endpoint is not None
+        else None
+    ),
+)
