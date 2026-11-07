@@ -56,10 +56,40 @@ describe('App', () => {
     const state = renderApp('unauthenticated')
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create a free account' }))
 
     expect(state.signIn).toHaveBeenCalledWith('/chat')
     expect(state.signUp).toHaveBeenCalledWith('/chat')
+  })
+
+  it('exposes accessible landmarks, headings, and a skip link', () => {
+    renderApp('unauthenticated')
+
+    expect(screen.getByRole('main')).toBeDefined()
+    expect(screen.getByRole('heading', { level: 2, name: 'Get started' })).toBeDefined()
+    expect(screen.getByRole('heading', { level: 3, name: 'Your account' })).toBeDefined()
+    expect(screen.getByRole('region', { name: 'Your account' })).toBeDefined()
+    expect(
+      screen.getByRole('link', { name: 'Skip to main content' }).getAttribute('href'),
+    ).toBe('#main')
+  })
+
+  it('offers password reset through the Entra sign-in page without handling passwords', () => {
+    const state = renderApp('unauthenticated')
+
+    const reset = screen.getByRole('button', { name: 'Reset it on the sign-in page' })
+    expect(reset.getAttribute('aria-describedby')).toBe('reset-help')
+    expect(document.querySelector('input[type="password"]')).toBeNull()
+    fireEvent.click(reset)
+    expect(state.signIn).toHaveBeenCalledWith('/chat')
+  })
+
+  it('disables every entry point while the session is loading', () => {
+    renderApp('loading')
+
+    for (const name of ['Create a free account', 'Sign in', 'Reset it on the sign-in page']) {
+      expect(screen.getByRole('button', { name }).hasAttribute('disabled')).toBe(true)
+    }
   })
 
   it('shows a recoverable error when sign-in cannot start', async () => {

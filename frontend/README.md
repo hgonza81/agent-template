@@ -44,3 +44,15 @@ Tenant values are pending provisioning. Set `VITE_ENTRA_AUTHORITY`,
 leave all three blank to run with sign-in disabled. Partial or invalid values
 fail `npm run dev` and `npm run build`. Tests use a fake auth context and a
 mocked MSAL, so they never contact a tenant.
+
+### Account entry points
+
+The start page offers **Create a free account**, **Sign in**, and a password
+reset entry. All three redirect to Entra External ID; this app has no password
+fields and never stores or resets passwords. Entra's sign-in page hosts the
+"forgot password" option, so the reset entry sends the user there with
+instructions. The Entra user-flow wiring (sign-up, sign-in, and self-service
+password reset enabled on the tenant) is **unverified** until the tenant is
+provisioned; confirm it before real sign-up acceptance tests. The page has a
+skip link, a `main` landmark, a labelled account region, and entry points that
+are disabled while the session state is loading.
