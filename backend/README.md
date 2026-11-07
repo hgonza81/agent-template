@@ -212,3 +212,39 @@ separate threads and histories (including interleaved messages), that supplying
 another user's thread, subscription, user, or agent ID is rejected with `422`
 without touching their conversation, and that missing or under-scoped tokens
 never reach the agent.
+
+## Foundry provider decision (pending provisioning)
+
+Status: proposed and documented only. Nothing is provisioned, no Azure call is
+made, and no credentials exist. Live Foundry calls stay disabled (the
+deterministic fake agent is used) until provisioning is explicitly approved.
+
+| Item | Decision |
+| --- | --- |
+| Provider | Azure AI Foundry Agent Service, called server-side with managed identity |
+| Region | South Central US (San Antonio, Texas), the closest Azure region to Houston. Fallback: East US 2 |
+| Model | `gpt-4.1-nano` (Global Standard deployment), the cheapest adequate model for plain chat. Fallback: `gpt-4o-mini` |
+| Agent config | Only provider-required settings: no system prompt, tools, retrieval, or custom guardrails |
+| Quotas | Default minimum quotas for the subscription; no increase requests |
+| Budget | USD 10/month for Azure, below the USD 50 dev/staging ceiling in the spec |
+| Data handling | Foundry owns thread history; chat content never goes to logs or telemetry; retention/deletion is verified before production |
+
+Region and model availability could not be verified from this environment
+(offline, no Azure access). Before provisioning, confirm in the Azure
+portal/docs that South Central US offers Foundry Agent Service and the
+`gpt-4.1-nano` deployment under the subscription's default quota, and
+re-check current prices. If not, use the fallbacks and re-review.
+
+### Cost estimate (model usage only, approximate list prices to re-verify)
+
+Assumption: 1,000 messages/month, about 2,000 input tokens (thread history
+included) and 300 output tokens each, at roughly USD 0.10 per 1M input and
+USD 0.40 per 1M output tokens: 2M x 0.10 + 0.3M x 0.40, about USD 0.32/month.
+Even with 10x the usage this stays near USD 3.20/month, within the budget.
+
+Open point: the USD 10/month budget must cover the whole stack, not just the
+model. A managed PostgreSQL instance, Container Apps, registry, and monitoring
+may alone exceed it. Itemize them before provisioning; if the total exceeds
+USD 10, request explicit approval of a revised ceiling (still within USD 50).
+Budgets and alerts are not hard spending caps, so keep the application token
+and rate limits enabled.
