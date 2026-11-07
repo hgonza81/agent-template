@@ -1,15 +1,34 @@
+import json
+import logging
 from importlib.metadata import version
+from time import perf_counter
+from uuid import UUID, uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.responses import Response
 
 from agent_template_api.database import create_database_engine
+from agent_template_api.logging_config import configure_logging
 from agent_template_api.settings import get_settings
 
 settings = get_settings()
+configure_logging(settings.log_level)
+logger = logging.getLogger("agent_template_api.requests")
 database_engine = create_database_engine(settings)
+
+
+class ErrorResponse(BaseModel):
+    detail: str
+    request_id: str
+
 
 app = FastAPI(
     title="Agent Template API",
@@ -17,9 +36,123 @@ app = FastAPI(
     description="API for the Agent Template application.",
 )
 
+
+def get_request_id(request: Request) -> str:
+    request_id = getattr(request.state, "request_id", None)
+    if request_id is None:
+        supplied_request_id = request.headers.get("X-Request-ID", "")
+        try:
+            request_id = str(UUID(supplied_request_id))
+        except ValueError:
+            request_id = str(uuid4())
+        request.state.request_id = request_id
+    return request_id
+
+
+@app.middleware("http")
+async def log_request(
+    request: Request,
+    call_next: RequestResponseEndpoint,
+) -> Response:
+    request_id = get_request_id(request)
+    started_at = perf_counter()
+    request.state.error_category = None
+
+    try:
+        response = await call_next(request)
+    except Exception:
+        request.state.error_category = "internal_error"
+        response = JSONResponse(
+            status_code=500,
+            content=ErrorResponse(
+                detail="Internal server error",
+                request_id=request_id,
+            ).model_dump(),
+        )
+
+    response.headers["X-Request-ID"] = request_id
+    route = request.scope.get("route")
+    event: dict[str, str | int | float] = {
+        "event": "api.request",
+        "request_id": request_id,
+        "method": request.method,
+        "route": getattr(route, "path", "unmatched"),
+        "status_code": response.status_code,
+        "duration_ms": round((perf_counter() - started_at) * 1000, 2),
+    }
+    if response.status_code >= 400:
+        event["error_category"] = request.state.error_category or "http_error"
+    logger.log(
+        logging.WARNING if response.status_code >= 500 else logging.INFO,
+        json.dumps(event, separators=(",", ":"), sort_keys=True),
+    )
+    return response
+
+
+@app.exception_handler(StarletteHTTPException)
+async def handle_http_error(
+    request: Request,
+    error: StarletteHTTPException,
+) -> JSONResponse:
+    request.state.error_category = "http_error"
+    details = {
+        401: "Unauthorized",
+        403: "Forbidden",
+        404: "Not found",
+        405: "Method not allowed",
+        409: "Conflict",
+        422: "Invalid request",
+        429: "Too many requests",
+        503: "Service unavailable",
+    }
+    safe_headers: dict[str, str] = {}
+    if error.headers:
+        allowed_methods = {
+            "DELETE",
+            "GET",
+            "HEAD",
+            "OPTIONS",
+            "PATCH",
+            "POST",
+            "PUT",
+        }
+        allow = error.headers.get("Allow")
+        if allow is not None and all(
+            method.strip() in allowed_methods for method in allow.split(",")
+        ):
+            safe_headers["Allow"] = allow
+        retry_after = error.headers.get("Retry-After")
+        if retry_after is not None and retry_after.isdecimal():
+            safe_headers["Retry-After"] = retry_after
+    return JSONResponse(
+        status_code=error.status_code,
+        content=ErrorResponse(
+            detail=details.get(error.status_code, "Request failed"),
+            request_id=get_request_id(request),
+        ).model_dump(),
+        headers=safe_headers,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_validation_error(
+    request: Request,
+    error: RequestValidationError,
+) -> JSONResponse:
+    request.state.error_category = "request_validation_error"
+    return JSONResponse(
+        status_code=422,
+        content=ErrorResponse(
+            detail="Invalid request",
+            request_id=get_request_id(request),
+        ).model_dump(),
+    )
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allowed_origins,
+    expose_headers=["X-Request-ID"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -32,7 +165,12 @@ def health_live() -> dict[str, str]:
 
 @app.get(
     "/api/v1/health/ready",
-    responses={503: {"description": "A required dependency is unavailable"}},
+    responses={
+        503: {
+            "model": ErrorResponse,
+            "description": "A required dependency is unavailable",
+        }
+    },
 )
 def health_ready() -> dict[str, str]:
     try:
@@ -41,7 +179,7 @@ def health_ready() -> dict[str, str]:
     except SQLAlchemyError as error:
         raise HTTPException(
             status_code=503,
-            detail={"status": "unavailable"},
+            detail="Service unavailable",
         ) from error
 
     return {"status": "ok"}

@@ -31,6 +31,42 @@ def test_rejects_malformed_database_urls() -> None:
         )
 
 
+def test_log_level_defaults_to_info() -> None:
+    settings = Settings(
+        cors_allowed_origins=["http://127.0.0.1:5173"],
+        database_url="postgresql+psycopg://agent_template:local-dev-only@localhost/app",
+        _env_file=None,
+    )
+
+    assert settings.log_level == "INFO"
+
+
+def test_log_level_is_read_from_environment_and_normalized(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LOG_LEVEL", "debug")
+
+    settings = Settings(
+        cors_allowed_origins=["http://127.0.0.1:5173"],
+        database_url="postgresql+psycopg://agent_template:local-dev-only@localhost/app",
+        _env_file=None,
+    )
+
+    assert settings.log_level == "DEBUG"
+
+
+def test_rejects_unsupported_log_level() -> None:
+    with pytest.raises(ValidationError, match="log_level"):
+        Settings(
+            cors_allowed_origins=["http://127.0.0.1:5173"],
+            database_url=(
+                "postgresql+psycopg://agent_template:local-dev-only@localhost/app"
+            ),
+            log_level="TRACE",
+            _env_file=None,
+        )
+
+
 def test_requires_cors_origins_when_no_environment_file_is_used(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

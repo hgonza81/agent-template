@@ -14,6 +14,17 @@ The liveness endpoint (`/api/v1/health/live`) checks that the process is
 running without contacting dependencies. The readiness endpoint
 (`/api/v1/health/ready`) returns `503` when PostgreSQL is unavailable.
 
+API request logs are JSON events containing the request ID, HTTP method, route
+template, status code, and duration. They do not include raw request paths,
+query strings, headers, bodies, or exception messages. Responses include the
+`X-Request-ID` header, which is exposed to browser clients by CORS; error
+responses also include that ID in their JSON body and use generic messages
+rather than exception details. `make backend` disables Uvicorn's raw access
+logs so they do not duplicate or expose request-line data.
+Set `LOG_LEVEL` in `backend/.env` to `DEBUG`, `INFO` (the default), `WARNING`,
+`ERROR`, or `CRITICAL` to control API request log verbosity; values are
+case-insensitive.
+
 ## OpenAPI contract
 
 FastAPI defines the API contract. After changing backend routes or models, run

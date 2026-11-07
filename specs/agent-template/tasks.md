@@ -39,7 +39,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Add local PostgreSQL configuration and a disposable test database/service; document startup, migration, reset, and shutdown.
 - [x] Add the single `subscriptions` SQLAlchemy model and Alembic migration with unique `(identity_issuer, identity_subject)` and UTC start-time behavior.
 - [x] Add `GET /api/v1/health/live` that does not call external dependencies and `GET /api/v1/health/ready` that reflects required dependency availability.
-- [ ] Add privacy-safe structured API logs and request/correlation IDs; ensure error responses do not leak stack traces or configuration secrets.
+- [x] Add privacy-safe structured API logs and request/correlation IDs; ensure error responses do not leak stack traces or configuration secrets.
 - [ ] Add OpenTelemetry-compatible API traces and metrics as database/API behavior is implemented, with optional local OTLP collection/viewing instructions.
 - [ ] Add automated tests proving tokens, credentials, and unnecessary personal data are absent from logs and telemetry; add chat-content assertions with the chat slice.
 - [ ] Keep local observability optional for the basic app run and document its resource requirements; do not add a cloud monitoring dependency.

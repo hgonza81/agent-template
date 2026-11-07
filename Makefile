@@ -36,7 +36,7 @@ migration: backend-env db-up ## Create a migration: make migration MESSAGE="desc
 	cd backend && uv run alembic revision --autogenerate -m "$(MESSAGE)"
 
 backend: migrate ## Start the API (starts PostgreSQL and applies migrations)
-	cd backend && uv run uvicorn agent_template_api.main:app --reload
+	cd backend && uv run uvicorn agent_template_api.main:app --reload --no-access-log
 
 frontend: frontend-env frontend-deps ## Start the frontend
 	cd frontend && npm run dev

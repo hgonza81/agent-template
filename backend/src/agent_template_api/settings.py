@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 from urllib.parse import urlsplit
 
 from pydantic import SecretStr, field_validator
@@ -10,6 +11,7 @@ from sqlalchemy.exc import ArgumentError
 class Settings(BaseSettings):
     cors_allowed_origins: list[str]
     database_url: SecretStr
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -17,6 +19,11 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
     )
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def normalize_log_level(cls, log_level: str) -> str:
+        return log_level.upper()
 
     @field_validator("database_url")
     @classmethod

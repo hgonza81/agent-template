@@ -10,6 +10,14 @@
  * ---------------------------------------------------------------
  */
 
+/** ErrorResponse */
+export interface ErrorResponse {
+  /** Detail */
+  detail: string;
+  /** Request Id */
+  request_id: string;
+}
+
 export namespace Api {
   /**
    * No description

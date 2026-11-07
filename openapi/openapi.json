@@ -1,4 +1,26 @@
 {
+  "components": {
+    "schemas": {
+      "ErrorResponse": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail",
+          "request_id"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      }
+    }
+  },
   "info": {
     "description": "API for the Agent Template application.",
     "title": "Agent Template API",
@@ -47,6 +69,13 @@
             "description": "Successful Response"
           },
           "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
             "description": "A required dependency is unavailable"
           }
         },

@@ -63,4 +63,7 @@ def test_readiness_returns_unavailable_when_database_is_unavailable(
         response = client.get("/api/v1/health/ready")
 
     assert response.status_code == 503
-    assert response.json() == {"detail": {"status": "unavailable"}}
+    assert response.json() == {
+        "detail": "Service unavailable",
+        "request_id": response.headers["X-Request-ID"],
+    }
