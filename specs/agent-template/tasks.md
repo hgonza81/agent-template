@@ -42,7 +42,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Add privacy-safe structured API logs and request/correlation IDs; ensure error responses do not leak stack traces or configuration secrets.
 - [x] Add OpenTelemetry-compatible API traces and metrics as database/API behavior is implemented, with optional local OTLP collection/viewing instructions.
 - [x] Add automated tests proving tokens, credentials, and unnecessary personal data are absent from current API logs and telemetry.
-- [ ] Keep local observability optional for the basic app run and document its resource requirements; do not add a cloud monitoring dependency.
+- [x] Keep local observability optional for the basic app run and document its resource requirements; do not add a cloud monitoring dependency.
 
 **Why here:** Operational visibility and privacy boundaries are cheaper to establish alongside the API than retrofit after integrations and production usage.
 

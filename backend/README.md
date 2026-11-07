@@ -36,6 +36,14 @@ root:
 make observability-up
 ```
 
+The observability profile is optional: the regular `make backend` workflow
+starts PostgreSQL only and does not start these services or require a hosted
+monitoring account. The three pinned images currently total about 900 MB to
+download, so leave at least 1 GB of free Docker storage for their initial
+pull. Compose does not impose CPU or memory limits; usage depends on local
+traffic and how long the tools retain data, so allocate additional Docker
+resources if the stack is under sustained use.
+
 In another terminal, run `make backend-otel` to start the API with OTLP
 export enabled. Open Jaeger at `http://127.0.0.1:16686` to inspect traces and
 Prometheus at `http://127.0.0.1:9090` to query metrics such as
