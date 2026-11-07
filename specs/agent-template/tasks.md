@@ -64,11 +64,9 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Add bounded message size, request rate/concurrency controls, timeouts, safe error handling, and tests for success, provider failure, timeout, retry, and cancellation/disconnect behavior.
 - [x] Add end-to-end local fake-agent tests, including proof a user cannot access another user's conversation.
 - [x] Confirm provider/model configuration, region, data handling, quotas, and cost before enabling live Azure AI Foundry calls.
-- [ ] Implement the Foundry adapter and managed-identity authorization; keep provider calls server-side and ensure no prompt/message/output is captured in telemetry.
-  BLOQUEADA: requiere proyecto Foundry aprobado/aprovisionado y managed identity en Azure; verificación en vivo no posible localmente.
-- [ ] Add automated tests proving chat content, prompts, model output, tokens, credentials, and unnecessary personal data are absent from logs and telemetry.
-- [ ] Decide streaming only after a focused spike verifies reliable cancellation, disconnect cleanup, and testability; ship a tested non-streaming response first if needed.
-- [ ] Document conversation retention/deletion behavior and verify the provider's actual capabilities before production.
+- [ ] Implement the Foundry adapter against the existing agent interface using an injected, mocked provider client (no live Azure calls, credentials, or provisioning); keep provider calls server-side and ensure no prompt/message/output is captured in telemetry.
+
+The Azure-dependent Phase 5 items (live managed-identity authorization, privacy tests against the real adapter, streaming spike, retention verification) moved to Phase 7b.
 
 ## Phase 6: Local integration, containers, and release quality
 
@@ -85,12 +83,21 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Add Terraform format/init/validate and security/policy checks to PR CI; do not require Azure credentials or apply resources from CI.
 - [x] Design isolated per-environment infrastructure and a separately bootstrapped remote-state backend with Entra data-plane RBAC, TLS, versioning, and soft delete.
 - [x] Define a minimal dev deployment with only required resources, explicit scaling/retention/region, managed identity, least privilege, and no production resources.
+
+**Why here:** Local behavior, tests, and container builds should be stable before cloud costs begin. Terraform checks can be automated early, but a successful validation is not authorization to create resources.
+
+## Phase 7b: Azure gate (real subscription and explicit approval required)
+
+Everything here needs a real Azure subscription, credentials, or provisioned resources. Do not start any item without explicit user approval.
+
 - [ ] Check subscription restrictions, current credit/spend limits, model/database region availability, quotas, data processing, and itemized expected monthly cost.
 - [ ] Generate and review an environment-specific plan, including all creates/updates/deletes and sensitive-resource handling; obtain explicit approval before applying.
 - [ ] Provision the remote-state backend only after approval and verify access/locking; provision dev only after a separately reviewed plan and explicit apply approval.
 - [ ] Verify TLS, identity/RBAC, network exposure, secret handling, health probes, cost alerts, and privacy-safe telemetry in dev.
-
-**Why here:** Local behavior, tests, and container builds should be stable before cloud costs begin. Terraform checks can be automated early, but a successful validation is not authorization to create resources.
+- [ ] Enable live Foundry calls with managed-identity authorization and verify them against the provisioned project.
+- [ ] Add automated tests proving chat content, prompts, model output, tokens, credentials, and unnecessary personal data are absent from logs and telemetry, including with the real adapter.
+- [ ] Decide streaming only after a focused spike verifies reliable cancellation, disconnect cleanup, and testability; ship a tested non-streaming response first if needed.
+- [ ] Document conversation retention/deletion behavior and verify the provider's actual capabilities before production.
 
 ## Phase 8: Azure CI/CD and dev deployment
 
