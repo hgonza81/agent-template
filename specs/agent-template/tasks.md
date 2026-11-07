@@ -70,7 +70,7 @@ The Azure-dependent Phase 5 items (live managed-identity authorization, privacy 
 
 ## Phase 6: Local integration, containers, and release quality
 
-- [ ] Document and verify one local workflow for frontend, API, PostgreSQL, migrations, fake agent, and optional telemetry.
+- [x] Document and verify one local workflow for frontend, API, PostgreSQL, migrations, fake agent, and optional telemetry.
 - [ ] Add frontend/API integration and accessibility tests for sign-up/sign-in states, protected chat, loading/errors, and recovery navigation.
 - [ ] Add reproducible, non-root frontend/backend container images, health checks, and graceful shutdown; test them locally.
 - [ ] Add container build and vulnerability scanning to CI; publish no image or deployment credentials from untrusted PRs.
