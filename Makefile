@@ -2,7 +2,7 @@
 
 .PHONY: help setup backend-env frontend-env frontend-deps db-up db-down migrate \
 	migration backend backend-otel frontend test test-backend test-frontend check-backend \
-	check-frontend test build audit format openapi api-types db-reset-test
+	check-frontend test build audit format openapi api-types db-reset-test docker-build docker-test
 .PHONY: observability-up observability-down
 
 help: ## Show available commands
@@ -96,3 +96,10 @@ db-reset-test: db-up ## Recreate ONLY agent_template_test and apply its migratio
 	docker compose exec -T postgres createdb -U agent_template --owner=agent_template agent_template_test
 	cd backend && DATABASE_URL=postgresql+psycopg://agent_template:local-dev-only@127.0.0.1:5433/agent_template_test \
 		uv run alembic upgrade head
+
+docker-build: ## Build the API and web container images locally
+	docker build -t agent-template-api:local backend
+	docker build -t agent-template-web:local frontend
+
+docker-test: ## Build the images and verify non-root, health checks, and shutdown
+	scripts/test-containers.sh

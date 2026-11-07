@@ -27,3 +27,22 @@ credentials. See [`backend/README.md`](backend/README.md).
 Other commands: `make test`, `make check` (run before committing),
 `make db-reset-test`, `make db-down`, `make api-types` after API changes.
 Run `make help` for the full list.
+
+## Container images
+
+`backend/Dockerfile` (API) and `frontend/Dockerfile` (static SPA on nginx) build
+reproducible images: base images pinned by digest, dependencies installed from
+`uv.lock` / `package-lock.json`, and a non-root runtime user. Both define a
+`HEALTHCHECK` (API: `/api/v1/health/live`, which never touches the database or
+provider; web: `/healthz`) and stop gracefully on `SIGTERM` (uvicorn drains
+in-flight requests for up to 25 seconds).
+
+- `make docker-build` builds `agent-template-api:local` and
+  `agent-template-web:local`.
+- `make docker-test` builds both and verifies non-root users, health, liveness
+  versus readiness without a database, SPA fallback, and graceful shutdown.
+- The API reads its configuration from environment variables at runtime
+  (`DATABASE_URL`, `CORS_ALLOWED_ORIGINS`, `OIDC_*`); no `.env` file is baked
+  in. Run migrations with `alembic upgrade head` inside the API image.
+- `VITE_*` values are public and baked into the web image at build time via
+  `--build-arg` (for example `VITE_API_BASE_URL`).
