@@ -74,7 +74,7 @@ The Azure-dependent Phase 5 items (live managed-identity authorization, privacy 
 - [x] Add frontend/API integration and accessibility tests for sign-up/sign-in states, protected chat, loading/errors, and recovery navigation.
 - [x] Add reproducible, non-root frontend/backend container images, health checks, and graceful shutdown; test them locally.
 - [x] Add container build and vulnerability scanning to CI; publish no image or deployment credentials from untrusted PRs.
-- [ ] Add database migration compatibility checks and document how local developers safely reset test data.
+- [x] Add database migration compatibility checks and document how local developers safely reset test data.
 - [ ] Run the complete local suite and record commands/results before starting cloud infrastructure work.
 
 ## Phase 7: Terraform and Azure dev foundation (approval required)

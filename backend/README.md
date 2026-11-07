@@ -91,7 +91,14 @@ Run backend tests with `make test-backend`, or run both backend and frontend
 tests with `make test`. The integration tests use only `agent_template_test`
 and verify uniqueness, UUID generation, UTC timestamps, and migrations.
 
-`make db-reset-test` recreates only the test database and reapplies migrations;
+Migration compatibility is checked by `tests/test_migrations.py`, which uses
+throwaway databases (never your development data) to verify a single Alembic
+head, upgrade from an empty database, no drift between models and migrations,
+and a downgrade to base followed by a fresh upgrade. Keep each migration
+reversible and commit it with the model change.
+
+To safely reset test data, run `make db-reset-test`. It recreates only
+`agent_template_test` and reapplies migrations;
 all data in that database will be deleted. Stop PostgreSQL and preserve its
 data with `make db-down`. Do not remove the Compose volume unless you intend to
 delete both local databases and all their data.
