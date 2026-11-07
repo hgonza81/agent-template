@@ -46,3 +46,13 @@ in-flight requests for up to 25 seconds).
   in. Run migrations with `alembic upgrade head` inside the API image.
 - `VITE_*` values are public and baked into the web image at build time via
   `--build-arg` (for example `VITE_API_BASE_URL`).
+
+## Local verification record
+
+Full local suite run before starting cloud infrastructure work (no Azure used):
+
+| Command | Result |
+| --- | --- |
+| `make check` | Passed: backend format/lint/types, 136 backend tests, 67 frontend tests, frontend lint/typecheck/build |
+| `make audit` | Passed: no known Python or npm vulnerabilities |
+| `make docker-test` | Passed: non-root, health checks, graceful shutdown |
