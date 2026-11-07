@@ -91,4 +91,21 @@ describe('chat screen', () => {
       )
     })
   })
+
+  it.each([
+    [429, 'too quickly'],
+    [422, 'too long'],
+    [504, 'too long to reply'],
+    [503, 'could not be sent'],
+  ])('explains a %i response', async (status, text) => {
+    await openChat()
+    fetchMock.mockResolvedValue(new Response(null, { status }))
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), {
+      target: { value: 'hello' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    expect((await screen.findByRole('alert')).textContent).toContain(text)
+  })
 })

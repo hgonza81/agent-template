@@ -183,3 +183,21 @@ accepted from a client, and each lookup is scoped by the subscription derived
 from the validated identity. Known limit: a provider thread created just
 before a failed commit is orphaned; the Foundry adapter should handle cleanup
 if the provider supports deletion.
+
+### Chat limits and failure handling
+
+| Control | Setting (default) | Result when exceeded |
+|---|---|---|
+| Message size | `CHAT_MAX_MESSAGE_CHARS` (4000) | `422` (also in OpenAPI as `maxLength`) |
+| Rate per subscription | `CHAT_RATE_LIMIT_PER_MINUTE` (20) | `429` + `Retry-After` |
+| In-flight requests | `CHAT_MAX_CONCURRENT_REQUESTS` (5) | `429` + `Retry-After: 1` |
+| Agent timeout | `CHAT_TIMEOUT_SECONDS` (30) | `504` |
+
+Provider failures return a generic `503`, provider timeouts `504`. Errors carry
+only `detail` and `request_id`, never message or provider text. If the client
+disconnects or the request is cancelled, the agent call is cancelled and the
+concurrency slot and thread-creation row lock are released; the provider may
+still have recorded a message that was already being sent. The rate and
+concurrency limiters are in-memory per API process, so size them per instance
+(or add a shared store) when scaling out. Retrying after a timeout or failure
+is safe: no thread reference is stored for a failed creation.

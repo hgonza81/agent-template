@@ -5,6 +5,7 @@
         "additionalProperties": false,
         "properties": {
           "message": {
+            "maxLength": 4000,
             "minLength": 1,
             "title": "Message",
             "type": "string"
@@ -145,7 +146,27 @@
                 }
               }
             },
-            "description": "Invalid request"
+            "description": "Invalid or oversized message"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate or concurrency limit reached; see Retry-After"
+          },
+          "499": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Client disconnected"
           },
           "503": {
             "content": {
@@ -156,6 +177,16 @@
               }
             },
             "description": "A dependency is unavailable"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The agent timed out"
           }
         },
         "security": [

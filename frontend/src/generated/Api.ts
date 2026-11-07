@@ -15,6 +15,7 @@ export interface ChatMessageRequest {
   /**
    * Message
    * @minLength 1
+   * @maxLength 4000
    */
   message: string;
 }

@@ -2,6 +2,7 @@ import { Alert, Box, Button, Paper, Stack, TextField, Typography } from '@mui/ma
 import { useState, type SyntheticEvent } from 'react'
 
 import { sendChatMessage } from '../api/chat'
+import { ApiError } from '../api/subscription'
 import { useAuth } from '../auth/AuthContext'
 import { apiBaseUrl } from '../config'
 
@@ -11,6 +12,22 @@ interface Turn {
   text: string
 }
 
+function describeFailure(error: unknown): string {
+  const restored = ' Your text was restored.'
+  if (error instanceof ApiError) {
+    if (error.status === 429) {
+      return `You are sending messages too quickly. Wait a moment and try again.${restored}`
+    }
+    if (error.status === 422) {
+      return `That message is too long or empty. Shorten it and try again.${restored}`
+    }
+    if (error.status === 504) {
+      return `The agent took too long to reply. Please try again.${restored}`
+    }
+  }
+  return `The message could not be sent. Please try again.${restored}`
+}
+
 // Plain conversation with the agent. Messages are held only in memory for this
 // page view; the server owns the ongoing conversation.
 export function ChatPanel() {
@@ -18,7 +35,7 @@ export function ChatPanel() {
   const [turns, setTurns] = useState<Turn[]>([])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
-  const [failed, setFailed] = useState(false)
+  const [failure, setFailure] = useState<string | null>(null)
 
   const submit = (event: SyntheticEvent) => {
     event.preventDefault()
@@ -26,7 +43,7 @@ export function ChatPanel() {
     if (message === '' || sending) {
       return
     }
-    setFailed(false)
+    setFailure(null)
     setSending(true)
     setTurns((current) => [...current, { id: current.length, role: 'user', text: message }])
     setDraft('')
@@ -35,8 +52,8 @@ export function ChatPanel() {
       .then((reply) => {
         setTurns((current) => [...current, { id: current.length, role: 'agent', text: reply }])
       })
-      .catch(() => {
-        setFailed(true)
+      .catch((error: unknown) => {
+        setFailure(describeFailure(error))
         setDraft(message)
       })
       .finally(() => {
@@ -73,9 +90,9 @@ export function ChatPanel() {
           </Typography>
         )}
       </Box>
-      {failed && (
+      {failure !== null && (
         <Alert severity="error" role="alert">
-          The message could not be sent. Your text was restored; please try again.
+          {failure}
         </Alert>
       )}
       <Stack component="form" direction="row" spacing={1} onSubmit={submit}>

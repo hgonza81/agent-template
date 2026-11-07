@@ -1,11 +1,13 @@
-from collections.abc import Iterator
+from collections.abc import Coroutine, Iterator
 from types import ModuleType
+from typing import Any
 from uuid import uuid4
 
 import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
+from httpx2 import Response
 from pytest import MonkeyPatch
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -187,3 +189,165 @@ def test_each_subscription_gets_its_own_thread(
             session.execute(
                 delete(Subscription).where(Subscription.identity_subject == other)
             )
+
+
+def post(client: TestClient, message: str = "hi") -> Response:
+    return client.post("/api/v1/chat/messages", json={"message": message})
+
+
+def test_message_at_the_limit_is_accepted_and_longer_is_rejected(
+    api_module: ModuleType, agent: FakeChatAgent, subject: str
+) -> None:
+    limit = api_module.settings.chat_max_message_chars
+    with TestClient(api_module.app) as client:
+        assert post(client, "x" * limit).status_code == 200
+        too_long = post(client, "x" * (limit + 1))
+
+    assert too_long.status_code == 422
+    assert "xxx" not in too_long.text
+
+
+def test_rate_limit_returns_429_with_retry_after(
+    monkeypatch: MonkeyPatch, api_module: ModuleType, agent: FakeChatAgent, subject: str
+) -> None:
+    from agent_template_api.chat_limits import RateLimiter
+
+    monkeypatch.setattr(api_module, "chat_rate_limiter", RateLimiter(2))
+    with TestClient(api_module.app) as client:
+        statuses = [post(client).status_code for _ in range(3)]
+        limited = post(client)
+
+    assert statuses == [200, 200, 429]
+    assert int(limited.headers["Retry-After"]) >= 1
+    assert limited.json()["detail"] == "Too many requests"
+
+
+def test_concurrency_limit_rejects_extra_requests_and_releases_slots(
+    monkeypatch: MonkeyPatch, api_module: ModuleType, agent: FakeChatAgent, subject: str
+) -> None:
+    from agent_template_api.chat_limits import ConcurrencyLimiter
+
+    limiter = ConcurrencyLimiter(1)
+    monkeypatch.setattr(api_module, "chat_concurrency", limiter)
+    assert limiter.try_acquire()  # simulate one request already in flight
+    with TestClient(api_module.app) as client:
+        rejected = post(client)
+        assert rejected.status_code == 429
+        assert rejected.headers["Retry-After"] == "1"
+        limiter.release()
+        assert post(client).status_code == 200
+
+    assert limiter.active == 0
+
+
+def test_slow_agent_times_out_with_504_then_retry_succeeds(
+    monkeypatch: MonkeyPatch, api_module: ModuleType, agent: FakeChatAgent, subject: str
+) -> None:
+    monkeypatch.setattr(api_module.settings, "chat_timeout_seconds", 0.1)
+    agent.create_delay_seconds = 5
+    with TestClient(api_module.app) as client:
+        timed_out = post(client)
+        assert timed_out.status_code == 504
+        assert timed_out.json()["detail"] == "Gateway timeout"
+        assert stored_thread(api_module, subject) is None
+        assert api_module.chat_concurrency.active == 0
+
+        agent.create_delay_seconds = 0
+        retried = post(client)
+
+    assert retried.status_code == 200
+
+
+def test_provider_timeout_error_maps_to_504(
+    api_module: ModuleType, agent: FakeChatAgent, subject: str
+) -> None:
+    from agent_template_api.agent import AgentTimeoutError
+
+    agent.error = AgentTimeoutError()
+    with TestClient(api_module.app) as client:
+        assert post(client).status_code == 504
+
+
+def test_errors_never_echo_message_content(
+    api_module: ModuleType, agent: FakeChatAgent, subject: str
+) -> None:
+    agent.error = AgentUnavailableError("echo: my private prompt")
+    with TestClient(api_module.app) as client:
+        response = post(client, "my private prompt")
+
+    assert response.status_code == 503
+    assert "private" not in response.text
+    assert set(response.json()) == {"detail", "request_id"}
+
+
+class _Request:
+    def __init__(self, disconnected: bool) -> None:
+        self._disconnected = disconnected
+
+    async def is_disconnected(self) -> bool:
+        return self._disconnected
+
+
+def _call(
+    api_module: ModuleType, agent: FakeChatAgent, request: _Request, subject: str
+) -> Coroutine[Any, Any, object]:
+    coroutine: Coroutine[Any, Any, object] = api_module.send_chat_message(
+        api_module.ChatMessageRequest(message="hi"),
+        request,
+        TokenIdentity(issuer=ISSUER, subject=subject, scopes=frozenset()),
+        agent,
+    )
+    return coroutine
+
+
+def test_client_disconnect_stops_work_and_frees_resources(
+    api_module: ModuleType, agent: FakeChatAgent, subject: str
+) -> None:
+    import asyncio
+
+    from fastapi import HTTPException
+
+    agent.delay_seconds = 30
+    agent.create_delay_seconds = 0.5
+
+    async def scenario() -> int:
+        try:
+            await _call(api_module, agent, _Request(disconnected=True), subject)
+        except HTTPException as error:
+            return error.status_code
+        return 0
+
+    assert asyncio.run(scenario()) == 499
+    assert api_module.chat_concurrency.active == 0
+    assert stored_thread(api_module, subject) is None
+
+    agent.delay_seconds = 0
+    agent.create_delay_seconds = 0
+    with TestClient(api_module.app) as client:
+        assert post(client).status_code == 200  # the row lock was released
+
+
+def test_cancelled_request_releases_slot_and_lock(
+    api_module: ModuleType, agent: FakeChatAgent, subject: str
+) -> None:
+    import asyncio
+
+    agent.create_delay_seconds = 30
+
+    async def scenario() -> None:
+        task = asyncio.ensure_future(
+            _call(api_module, agent, _Request(disconnected=False), subject)
+        )
+        await asyncio.sleep(0.3)
+        assert api_module.chat_concurrency.active == 1
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(scenario())
+    assert api_module.chat_concurrency.active == 0
+    assert stored_thread(api_module, subject) is None
+
+    agent.create_delay_seconds = 0
+    with TestClient(api_module.app) as client:
+        assert post(client).status_code == 200

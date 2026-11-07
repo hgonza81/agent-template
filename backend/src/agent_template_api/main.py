@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
@@ -21,8 +22,19 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
-from agent_template_api.agent import AgentError, ChatAgent, get_chat_agent
+from agent_template_api.agent import (
+    AgentError,
+    AgentTimeoutError,
+    ChatAgent,
+    get_chat_agent,
+)
 from agent_template_api.auth import TokenIdentity, get_current_identity
+from agent_template_api.chat_limits import (
+    ClientDisconnectedError,
+    ConcurrencyLimiter,
+    RateLimiter,
+    run_until_disconnect,
+)
 from agent_template_api.conversations import ensure_thread_id
 from agent_template_api.database import create_database_engine
 from agent_template_api.logging_config import configure_logging
@@ -34,6 +46,8 @@ settings = get_settings()
 configure_logging(settings.log_level)
 logger = logging.getLogger("agent_template_api.requests")
 database_engine = create_database_engine(settings)
+chat_concurrency = ConcurrencyLimiter(settings.chat_max_concurrent_requests)
+chat_rate_limiter = RateLimiter(settings.chat_rate_limit_per_minute)
 
 
 @asynccontextmanager
@@ -62,7 +76,7 @@ class ChatMessageRequest(BaseModel):
     # thread identifiers are server-owned and rejected if supplied.
     model_config = ConfigDict(extra="forbid")
 
-    message: str = Field(min_length=1)
+    message: str = Field(min_length=1, max_length=settings.chat_max_message_chars)
 
 
 class ChatMessageResponse(BaseModel):
@@ -144,7 +158,9 @@ async def handle_http_error(
         409: "Conflict",
         422: "Invalid request",
         429: "Too many requests",
+        499: "Client closed request",
         503: "Service unavailable",
+        504: "Gateway timeout",
     }
     safe_headers: dict[str, str] = {}
     if error.headers:
@@ -258,25 +274,48 @@ def get_my_subscription(
     responses={
         401: {"model": ErrorResponse, "description": "Missing or invalid token"},
         403: {"model": ErrorResponse, "description": "Token lacks the required scope"},
-        422: {"model": ErrorResponse, "description": "Invalid request"},
+        422: {"model": ErrorResponse, "description": "Invalid or oversized message"},
+        429: {
+            "model": ErrorResponse,
+            "description": "Rate or concurrency limit reached; see Retry-After",
+        },
+        499: {"model": ErrorResponse, "description": "Client disconnected"},
         503: {"model": ErrorResponse, "description": "A dependency is unavailable"},
+        504: {"model": ErrorResponse, "description": "The agent timed out"},
     },
 )
 async def send_chat_message(
     payload: ChatMessageRequest,
+    request: Request,
     identity: Annotated[TokenIdentity, Depends(get_current_identity)],
     agent: Annotated[ChatAgent, Depends(get_chat_agent)],
 ) -> ChatMessageResponse:
-    try:
+    retry_after = chat_rate_limiter.check(f"{identity.issuer}\n{identity.subject}")
+    if retry_after is not None:
+        raise HTTPException(status_code=429, headers={"Retry-After": str(retry_after)})
+    if not chat_concurrency.try_acquire():
+        raise HTTPException(status_code=429, headers={"Retry-After": "1"})
+
+    async def converse() -> str:
         subscription = await run_in_threadpool(
             provision_subscription, database_engine, identity
         )
         thread_id = await ensure_thread_id(
             database_engine, subscription.id, agent.create_thread
         )
-        reply = await agent.send_message(thread_id, payload.message)
+        return await agent.send_message(thread_id, payload.message)
+
+    try:
+        async with asyncio.timeout(settings.chat_timeout_seconds):
+            reply = await run_until_disconnect(request, converse())
+    except (TimeoutError, AgentTimeoutError) as error:
+        raise HTTPException(status_code=504) from error
+    except ClientDisconnectedError as error:
+        raise HTTPException(status_code=499) from error
     except (SQLAlchemyError, AgentError) as error:
-        raise HTTPException(status_code=503, detail="Service unavailable") from error
+        raise HTTPException(status_code=503) from error
+    finally:
+        chat_concurrency.release()
     return ChatMessageResponse(reply=reply)
 
 

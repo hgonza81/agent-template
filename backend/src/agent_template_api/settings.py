@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import AnyHttpUrl, SecretStr, field_validator, model_validator
+from pydantic import AnyHttpUrl, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     otel_exporter_otlp_endpoint: AnyHttpUrl | None = None
     # "fake" is the deterministic local agent; the Foundry adapter is added later.
     agent_provider: Literal["fake"] = "fake"
+    # Chat limits. Defaults follow the agreed targets: p95 <= 20 s and 5
+    # concurrent chat requests; the timeout is a hard ceiling above the p95.
+    chat_max_message_chars: int = Field(default=4000, ge=1, le=100_000)
+    chat_timeout_seconds: float = Field(default=30, gt=0, le=300)
+    chat_max_concurrent_requests: int = Field(default=5, ge=1, le=1000)
+    chat_rate_limit_per_minute: int = Field(default=20, ge=1, le=10_000)
     # Entra External ID values are pending provisioning; auth stays disabled
     # (protected routes return 503) until all four are configured.
     oidc_issuer: str | None = None
