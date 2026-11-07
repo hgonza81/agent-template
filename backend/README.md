@@ -248,3 +248,16 @@ may alone exceed it. Itemize them before provisioning; if the total exceeds
 USD 10, request explicit approval of a revised ceiling (still within USD 50).
 Budgets and alerts are not hard spending caps, so keep the application token
 and rate limits enabled.
+
+## Foundry adapter
+
+`agent_template_api.foundry_agent.FoundryChatAgent` implements `ChatAgent` on
+top of an injected `FoundryClient` (`create_thread`, `run_message`), so it has
+no SDK, credentials, or live Azure calls yet and is tested with a mock client.
+Provider calls stay server-side; only the user text, the server-owned thread
+reference, and the configured agent ID are passed. Provider failures map to the
+content-free `AgentTimeoutError`, `AgentThreadNotFoundError`, and
+`AgentUnavailableError` (the original exception is dropped), cancellation
+propagates, and the adapter never logs or records prompts, messages, or output.
+It is not selectable via `AGENT_PROVIDER` until the live client is wired in
+Phase 7b.

@@ -64,7 +64,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Add bounded message size, request rate/concurrency controls, timeouts, safe error handling, and tests for success, provider failure, timeout, retry, and cancellation/disconnect behavior.
 - [x] Add end-to-end local fake-agent tests, including proof a user cannot access another user's conversation.
 - [x] Confirm provider/model configuration, region, data handling, quotas, and cost before enabling live Azure AI Foundry calls.
-- [ ] Implement the Foundry adapter against the existing agent interface using an injected, mocked provider client (no live Azure calls, credentials, or provisioning); keep provider calls server-side and ensure no prompt/message/output is captured in telemetry.
+- [x] Implement the Foundry adapter against the existing agent interface using an injected, mocked provider client (no live Azure calls, credentials, or provisioning); keep provider calls server-side and ensure no prompt/message/output is captured in telemetry.
 
 The Azure-dependent Phase 5 items (live managed-identity authorization, privacy tests against the real adapter, streaming spike, retention verification) moved to Phase 7b.
 
