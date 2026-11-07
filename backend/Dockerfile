@@ -13,7 +13,14 @@ RUN uv sync --frozen --no-dev --no-editable
 
 FROM python@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc AS runtime
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
-RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin app
+# Apply Debian security fixes that the pinned base image does not have yet, and
+# drop pip/setuptools: the runtime never installs packages, and their vendored
+# libraries (msgpack, urllib3) are otherwise flagged by the vulnerability scan.
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip uninstall -y pip setuptools \
+    && useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin app
 WORKDIR /app
 COPY --from=build --chown=10001:10001 /app/.venv /app/.venv
 COPY --chown=10001:10001 alembic.ini ./
