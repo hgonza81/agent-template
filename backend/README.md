@@ -101,3 +101,21 @@ delete both local databases and all their data.
 Run `make check-backend` for Python formatting, lint, and type checks;
 `make check` runs the full test suite and frontend checks as well. Run
 `make audit` to scan Python and npm dependencies.
+
+## Token validation (Entra External ID)
+
+`agent_template_api.auth` validates bearer access tokens. Routes opt in with
+`Depends(get_current_identity)`, which yields the validated issuer and subject.
+It discovers the signing keys through the OIDC discovery document, checks that
+the document's `issuer` matches `OIDC_ISSUER`, and caches the JWKS for an
+hour. An unknown `kid` triggers a refresh (key rotation), at most once every
+30 seconds. Only RS256 is accepted, and the signature, `iss`, `aud`, `exp`,
+`nbf`, and `sub` claims are required (30 seconds of clock leeway). The `scp`
+claim must contain `OIDC_REQUIRED_SCOPE` as an exact entry.
+
+Failures map to `401` (missing or invalid token, with `WWW-Authenticate:
+Bearer`), `403` (valid token, missing scope), and `503` (identity provider
+unreachable or auth not configured). Responses never describe why a token
+failed. Tenant values are pending provisioning: leave the four `OIDC_*`
+variables blank in `backend/.env` (auth routes return `503`) or set all four.
+Tests use locally generated keys and never contact a real tenant.

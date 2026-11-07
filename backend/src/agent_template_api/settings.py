@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import AnyHttpUrl, SecretStr, field_validator
+from pydantic import AnyHttpUrl, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     database_url: SecretStr
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     otel_exporter_otlp_endpoint: AnyHttpUrl | None = None
+    # Entra External ID values are pending provisioning; auth stays disabled
+    # (protected routes return 503) until all four are configured.
+    oidc_issuer: str | None = None
+    oidc_discovery_url: AnyHttpUrl | None = None
+    oidc_audience: str | None = None
+    oidc_required_scope: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -46,6 +52,57 @@ class Settings(BaseSettings):
                 "a query, or a fragment"
             )
         return endpoint
+
+    @field_validator(
+        "oidc_issuer", "oidc_audience", "oidc_required_scope", mode="before"
+    )
+    @classmethod
+    def blank_oidc_value_is_unset(cls, value: str | None) -> str | None:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @field_validator("oidc_discovery_url", mode="before")
+    @classmethod
+    def blank_oidc_discovery_url_is_unset(cls, value: str | None) -> str | None:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @field_validator("oidc_discovery_url")
+    @classmethod
+    def validate_oidc_discovery_url(cls, url: AnyHttpUrl | None) -> AnyHttpUrl | None:
+        if url is None:
+            return None
+        parsed = urlsplit(str(url))
+        is_local = parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+        if (
+            parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+            or (parsed.scheme != "https" and not is_local)
+        ):
+            raise ValueError(
+                "OIDC_DISCOVERY_URL must use HTTPS (HTTP only for localhost) "
+                "and contain no credentials, query, or fragment"
+            )
+        return url
+
+    @model_validator(mode="after")
+    def validate_oidc_is_all_or_nothing(self) -> "Settings":
+        values = (
+            self.oidc_issuer,
+            self.oidc_discovery_url,
+            self.oidc_audience,
+            self.oidc_required_scope,
+        )
+        if any(v is not None for v in values) and any(v is None for v in values):
+            raise ValueError(
+                "OIDC_ISSUER, OIDC_DISCOVERY_URL, OIDC_AUDIENCE, and "
+                "OIDC_REQUIRED_SCOPE must be set together or not at all"
+            )
+        return self
 
     @field_validator("database_url")
     @classmethod

@@ -110,3 +110,40 @@ def test_requires_cors_origins_when_no_environment_file_is_used(
 
     with pytest.raises(ValidationError, match="cors_allowed_origins"):
         Settings(_env_file=None)
+
+
+def test_oidc_settings_must_be_set_together() -> None:
+    with pytest.raises(ValidationError, match="set together"):
+        Settings(
+            cors_allowed_origins=["http://127.0.0.1:5173"],
+            database_url="postgresql+psycopg://user:pass@localhost/app",
+            oidc_issuer="https://issuer.example.test",
+            _env_file=None,
+        )
+
+
+def test_oidc_discovery_url_requires_https_outside_localhost() -> None:
+    with pytest.raises(ValidationError, match="HTTPS"):
+        Settings(
+            cors_allowed_origins=["http://127.0.0.1:5173"],
+            database_url="postgresql+psycopg://user:pass@localhost/app",
+            oidc_issuer="http://issuer.example.test",
+            oidc_discovery_url="http://issuer.example.test/.well-known/x",
+            oidc_audience="api://x",
+            oidc_required_scope="chat.use",
+            _env_file=None,
+        )
+
+
+def test_blank_oidc_values_mean_unconfigured() -> None:
+    settings = Settings(
+        cors_allowed_origins=["http://127.0.0.1:5173"],
+        database_url="postgresql+psycopg://user:pass@localhost/app",
+        oidc_issuer="",
+        oidc_discovery_url="",
+        oidc_audience="",
+        oidc_required_scope="",
+        _env_file=None,
+    )
+    assert settings.oidc_issuer is None
+    assert settings.oidc_discovery_url is None

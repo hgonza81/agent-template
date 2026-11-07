@@ -48,7 +48,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 
 ## Phase 4: Identity and free-subscription vertical slice
 
-- [ ] Implement OIDC discovery/JWKS validation in FastAPI with issuer, audience, signature, time claims, required claims, and delegated-scope checks; test invalid-token rejection.
+- [x] Implement OIDC discovery/JWKS validation in FastAPI with issuer, audience, signature, time claims, required claims, and delegated-scope checks; test invalid-token rejection.
 - [ ] Implement React/MSAL sign-up, sign-in, sign-out, callback handling, and protected-route behavior with Authorization Code + PKCE and no client secret.
 - [ ] Build accessible registration/login/forgot-password entry points using the verified Entra External ID flows; do not implement password storage or reset in this app.
 - [ ] Implement `GET /api/v1/me/subscription` as an idempotent, transaction-safe provisioner; derive identity only from validated `(issuer, subject)` claims.
