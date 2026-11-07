@@ -56,3 +56,11 @@ password reset enabled on the tenant) is **unverified** until the tenant is
 provisioned; confirm it before real sign-up acceptance tests. The page has a
 skip link, a `main` landmark, a labelled account region, and entry points that
 are disabled while the session state is loading.
+
+### Chat screen
+
+`/chat` provisions the account (`GET /api/v1/me/subscription`) and then shows a
+plain conversation with the agent: an accessible message log, a labelled
+message box (Enter sends, Shift+Enter adds a line), a replying status, and an
+error with the text restored on failure. Messages are kept in memory for the
+page view only; there is no persona, tools, or retrieval in the UI.

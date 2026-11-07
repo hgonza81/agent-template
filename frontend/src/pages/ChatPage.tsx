@@ -2,9 +2,9 @@ import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/materia
 
 import { useSubscription } from '../api/useSubscription'
 import { useAuth } from '../auth/AuthContext'
+import { ChatPanel } from './ChatPanel'
 
-// The chat UI arrives in Phase 5; for now the page proves the account is
-// provisioned before the user enters the chat.
+// The account is provisioned before the chat is shown.
 export function ChatPage() {
   const { state, retry } = useSubscription()
   const { signOut } = useAuth()
@@ -54,7 +54,7 @@ export function ChatPage() {
       {state.subscription.email != null && (
         <Typography color="text.secondary">Signed in as {state.subscription.email}</Typography>
       )}
-      <Typography color="text.secondary">The chat experience is coming soon.</Typography>
+      <ChatPanel />
     </Stack>
   )
 }

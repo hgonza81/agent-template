@@ -9,18 +9,21 @@ from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from opentelemetry import trace
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
+from agent_template_api.agent import AgentError, ChatAgent, get_chat_agent
 from agent_template_api.auth import TokenIdentity, get_current_identity
+from agent_template_api.conversations import get_thread_id, store_thread_id
 from agent_template_api.database import create_database_engine
 from agent_template_api.logging_config import configure_logging
 from agent_template_api.settings import get_settings
@@ -52,6 +55,18 @@ class SubscriptionResponse(BaseModel):
     id: UUID
     started_at: datetime
     email: str | None = None
+
+
+class ChatMessageRequest(BaseModel):
+    # Only the message is accepted; user, subscription, agent, and provider
+    # thread identifiers are server-owned and rejected if supplied.
+    model_config = ConfigDict(extra="forbid")
+
+    message: str = Field(min_length=1)
+
+
+class ChatMessageResponse(BaseModel):
+    reply: str
 
 
 app = FastAPI(
@@ -235,6 +250,39 @@ def get_my_subscription(
         started_at=subscription.started_at,
         email=subscription.email_snapshot,
     )
+
+
+@app.post(
+    "/api/v1/chat/messages",
+    response_model=ChatMessageResponse,
+    responses={
+        401: {"model": ErrorResponse, "description": "Missing or invalid token"},
+        403: {"model": ErrorResponse, "description": "Token lacks the required scope"},
+        422: {"model": ErrorResponse, "description": "Invalid request"},
+        503: {"model": ErrorResponse, "description": "A dependency is unavailable"},
+    },
+)
+async def send_chat_message(
+    payload: ChatMessageRequest,
+    identity: Annotated[TokenIdentity, Depends(get_current_identity)],
+    agent: Annotated[ChatAgent, Depends(get_chat_agent)],
+) -> ChatMessageResponse:
+    try:
+        subscription = await run_in_threadpool(
+            provision_subscription, database_engine, identity
+        )
+        thread_id = await run_in_threadpool(
+            get_thread_id, database_engine, subscription.id
+        )
+        if thread_id is None:
+            created = await agent.create_thread()
+            thread_id = await run_in_threadpool(
+                store_thread_id, database_engine, subscription.id, created
+            )
+        reply = await agent.send_message(thread_id, payload.message)
+    except (SQLAlchemyError, AgentError) as error:
+        raise HTTPException(status_code=503, detail="Service unavailable") from error
+    return ChatMessageResponse(reply=reply)
 
 
 app.state.telemetry_runtime = configure_telemetry(

@@ -10,6 +10,21 @@
  * ---------------------------------------------------------------
  */
 
+/** ChatMessageRequest */
+export interface ChatMessageRequest {
+  /**
+   * Message
+   * @minLength 1
+   */
+  message: string;
+}
+
+/** ChatMessageResponse */
+export interface ChatMessageResponse {
+  /** Reply */
+  reply: string;
+}
+
 /** ErrorResponse */
 export interface ErrorResponse {
   /** Detail */
@@ -35,6 +50,21 @@ export interface SubscriptionResponse {
 }
 
 export namespace Api {
+  /**
+   * No description
+   * @name SendChatMessageApiV1ChatMessagesPost
+   * @summary Send Chat Message
+   * @request POST:/api/v1/chat/messages
+   * @secure
+   */
+  export namespace SendChatMessageApiV1ChatMessagesPost {
+    export type RequestParams = {};
+    export type RequestQuery = {};
+    export type RequestBody = ChatMessageRequest;
+    export type RequestHeaders = {};
+    export type ResponseBody = ChatMessageResponse;
+  }
+
   /**
    * No description
    * @name HealthLiveApiV1HealthLiveGet

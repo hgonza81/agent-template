@@ -161,3 +161,13 @@ It is a plain agent: no persona/system prompt, tools, or retrieval.
 add a second value later. The fake replies `Fake reply N: <message>` and
 supports injected delays and failures for timeout, error, and cancellation
 tests. Routes depend on the protocol only (`get_chat_agent`).
+
+## Chat endpoint
+
+`POST /api/v1/chat/messages` takes `{"message": "..."}` and returns
+`{"reply": "..."}`. It requires a valid bearer token, provisions the caller's
+subscription if needed, resolves (or creates and stores) the subscription's
+single provider thread, and sends the message through the `ChatAgent`. The
+request model forbids extra fields, so user, subscription, agent, and thread
+identifiers cannot be supplied. Provider and database failures return a generic
+`503`. Message content is never logged.
