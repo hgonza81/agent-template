@@ -28,6 +28,7 @@ def provision_subscription(engine: Engine, identity: TokenIdentity) -> Subscript
     (issuer, subject) constraint plus ON CONFLICT DO NOTHING makes concurrent
     first requests converge on one row: the losing transaction waits for the
     winner to commit, inserts nothing, and then reads the committed row.
+    Email is display data only (see the refresh policy below).
     """
     with Session(engine, expire_on_commit=False) as session, session.begin():
         session.execute(
@@ -41,9 +42,17 @@ def provision_subscription(engine: Engine, identity: TokenIdentity) -> Subscript
                 constraint="uq_subscriptions_identity_issuer_subject"
             )
         )
-        return session.execute(
+        subscription = session.execute(
             select(Subscription).where(
                 Subscription.identity_issuer == identity.issuer,
                 Subscription.identity_subject == identity.subject,
             )
         ).scalar_one()
+        # Email refresh policy: a valid claim that differs updates the display
+        # snapshot in place; a missing or invalid claim never clears it. The
+        # lookup above never involves email, so a changed or shared email
+        # cannot create, merge, or authorize an account.
+        email = normalize_email(identity.email)
+        if email is not None and email != subscription.email_snapshot:
+            subscription.email_snapshot = email
+        return subscription

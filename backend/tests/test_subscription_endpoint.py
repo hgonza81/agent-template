@@ -7,7 +7,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
-from sqlalchemy import delete, func, select
+from sqlalchemy import Table, delete, func, select
 from sqlalchemy.orm import Session
 
 from agent_template_api.auth import TokenIdentity, get_current_identity
@@ -129,3 +129,92 @@ def test_database_failure_returns_generic_503(
 
     assert response.status_code == 503
     assert "secret-host" not in response.text
+
+
+def email_of(api_module: ModuleType, subject: str) -> str | None:
+    with Session(api_module.database_engine) as session:
+        return session.execute(
+            select(Subscription.email_snapshot).where(
+                Subscription.identity_subject == subject
+            )
+        ).scalar_one()
+
+
+def test_changed_email_updates_the_snapshot_without_a_new_subscription(
+    api_module: ModuleType, subject: str
+) -> None:
+    with TestClient(api_module.app) as client:
+        authenticate_as(api_module, subject, email="old@example.test")
+        first = client.get("/api/v1/me/subscription").json()
+        authenticate_as(api_module, subject, email="New@Example.test")
+        second = client.get("/api/v1/me/subscription").json()
+
+    assert second["id"] == first["id"]
+    assert second["email"] == "new@example.test"
+    assert count(api_module, subject) == 1
+
+
+@pytest.mark.parametrize("claim", [None, "", "   ", "not-an-email"])
+def test_missing_or_invalid_email_never_clears_the_snapshot(
+    api_module: ModuleType, subject: str, claim: str | None
+) -> None:
+    with TestClient(api_module.app) as client:
+        authenticate_as(api_module, subject, email="keep@example.test")
+        client.get("/api/v1/me/subscription")
+        authenticate_as(api_module, subject, email=claim)
+        response = client.get("/api/v1/me/subscription")
+
+    assert response.json()["email"] == "keep@example.test"
+    assert email_of(api_module, subject) == "keep@example.test"
+
+
+def test_shared_email_does_not_merge_identities(
+    api_module: ModuleType, subject: str
+) -> None:
+    other = f"{subject}-other"
+    try:
+        with TestClient(api_module.app) as client:
+            authenticate_as(api_module, subject, email="shared@example.test")
+            first = client.get("/api/v1/me/subscription").json()
+            authenticate_as(api_module, other, email="shared@example.test")
+            second = client.get("/api/v1/me/subscription").json()
+
+        assert first["id"] != second["id"]
+        assert count(api_module, subject) == 1
+        assert count(api_module, other) == 1
+    finally:
+        with Session(api_module.database_engine) as session, session.begin():
+            session.execute(
+                delete(Subscription).where(Subscription.identity_subject == other)
+            )
+
+
+def test_same_subject_from_another_issuer_is_a_separate_subscription(
+    api_module: ModuleType, subject: str
+) -> None:
+    from agent_template_api.subscriptions import provision_subscription
+
+    first = provision_subscription(
+        api_module.database_engine,
+        TokenIdentity(issuer=ISSUER, subject=subject, scopes=frozenset()),
+    )
+    second = provision_subscription(
+        api_module.database_engine,
+        TokenIdentity(issuer=ISSUER + "-b", subject=subject, scopes=frozenset()),
+    )
+
+    assert first.id != second.id
+
+
+def test_email_is_not_indexed_or_unique_so_it_cannot_identify_accounts() -> None:
+    table = Subscription.__table__
+    assert isinstance(table, Table)
+    email_column = table.c.email_snapshot
+    assert not email_column.unique
+    assert not email_column.index
+    assert all(email_column not in index.columns for index in table.indexes)
+    assert all(
+        email_column.name not in {c.name for c in constraint.columns}
+        for constraint in table.constraints
+        if hasattr(constraint, "columns")
+    )

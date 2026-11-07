@@ -130,4 +130,12 @@ request has no body and query/header values are ignored. Creation is a single
 by a read in the same transaction, so retries and concurrent first requests
 return the same row. The response never includes the issuer, subject, or
 Foundry thread ID. The email is a normalized display snapshot written at
-creation; see the email policy in the next task.
+creation and refreshed under the policy below.
+
+### Email policy
+
+Email is display/contact data only. Accounts are looked up exclusively by
+`(issuer, subject)`; no query, index, or constraint involves email, and it never
+authorizes anything. A valid, different email claim updates the stored
+snapshot in place (no new subscription); a missing or invalid claim keeps the
+existing snapshot. Two identities sharing an email get separate subscriptions.
