@@ -51,14 +51,18 @@ class FakeChatAgent:
         *,
         thread_id_factory: Callable[[], str] | None = None,
         delay_seconds: float = 0,
+        create_delay_seconds: float = 0,
         error: AgentError | None = None,
     ) -> None:
         self._thread_id_factory = thread_id_factory or (lambda: f"fake-{uuid4()}")
         self.delay_seconds = delay_seconds
+        self.create_delay_seconds = create_delay_seconds
         self.error = error
         self._threads: dict[str, list[str]] = {}
 
     async def create_thread(self) -> str:
+        if self.create_delay_seconds:
+            await asyncio.sleep(self.create_delay_seconds)
         if self.error is not None:
             raise self.error
         thread_id = self._thread_id_factory()

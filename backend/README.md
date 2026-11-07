@@ -171,3 +171,15 @@ single provider thread, and sends the message through the `ChatAgent`. The
 request model forbids extra fields, so user, subscription, agent, and thread
 identifiers cannot be supplied. Provider and database failures return a generic
 `503`. Message content is never logged.
+
+### Conversation thread creation
+
+The first message locks the subscription row (`SELECT ... FOR UPDATE`) while the
+provider thread is created and its reference stored in one transaction, so
+concurrent first messages create exactly one thread and later requests use an
+unlocked read. A failed provider call or commit stores nothing and the next
+request retries. The thread reference is server-only: it is never returned or
+accepted from a client, and each lookup is scoped by the subscription derived
+from the validated identity. Known limit: a provider thread created just
+before a failed commit is orphaned; the Foundry adapter should handle cleanup
+if the provider supports deletion.

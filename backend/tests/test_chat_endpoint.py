@@ -127,3 +127,63 @@ def test_invalid_bodies_are_rejected(
 
     assert response.status_code == 422
     assert agent.thread_ids() == []
+
+
+def test_concurrent_first_messages_create_exactly_one_thread(
+    api_module: ModuleType, subject: str
+) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    slow = FakeChatAgent(create_delay_seconds=0.3)
+    api_module.app.dependency_overrides[get_chat_agent] = lambda: slow
+
+    def send(index: int) -> int:
+        with TestClient(api_module.app) as client:
+            return client.post(
+                "/api/v1/chat/messages", json={"message": f"m{index}"}
+            ).status_code
+
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        statuses = list(pool.map(send, range(5)))
+
+    assert statuses == [200] * 5
+    assert len(slow.thread_ids()) == 1
+    assert stored_thread(api_module, subject) == slow.thread_ids()[0]
+
+
+def test_failed_thread_creation_stores_nothing_and_is_retried(
+    api_module: ModuleType, agent: FakeChatAgent, subject: str
+) -> None:
+    agent.error = AgentUnavailableError()
+    with TestClient(api_module.app) as client:
+        failed = client.post("/api/v1/chat/messages", json={"message": "hi"})
+        assert failed.status_code == 503
+        assert stored_thread(api_module, subject) is None
+
+        agent.error = None
+        retried = client.post("/api/v1/chat/messages", json={"message": "hi"})
+
+    assert retried.status_code == 200
+    assert len(agent.thread_ids()) == 1
+
+
+def test_each_subscription_gets_its_own_thread(
+    api_module: ModuleType, agent: FakeChatAgent, subject: str
+) -> None:
+    other = f"{subject}-other"
+    try:
+        with TestClient(api_module.app) as client:
+            client.post("/api/v1/chat/messages", json={"message": "mine"})
+            api_module.app.dependency_overrides[get_current_identity] = lambda: (
+                TokenIdentity(issuer=ISSUER, subject=other, scopes=frozenset())
+            )
+            theirs = client.post("/api/v1/chat/messages", json={"message": "theirs"})
+
+        assert theirs.json()["reply"] == "Fake reply 1: theirs"
+        assert len(agent.thread_ids()) == 2
+        assert stored_thread(api_module, subject) != stored_thread(api_module, other)
+    finally:
+        with Session(api_module.database_engine) as session, session.begin():
+            session.execute(
+                delete(Subscription).where(Subscription.identity_subject == other)
+            )

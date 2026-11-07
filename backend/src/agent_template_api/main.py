@@ -23,7 +23,7 @@ from starlette.responses import Response
 
 from agent_template_api.agent import AgentError, ChatAgent, get_chat_agent
 from agent_template_api.auth import TokenIdentity, get_current_identity
-from agent_template_api.conversations import get_thread_id, store_thread_id
+from agent_template_api.conversations import ensure_thread_id
 from agent_template_api.database import create_database_engine
 from agent_template_api.logging_config import configure_logging
 from agent_template_api.settings import get_settings
@@ -271,14 +271,9 @@ async def send_chat_message(
         subscription = await run_in_threadpool(
             provision_subscription, database_engine, identity
         )
-        thread_id = await run_in_threadpool(
-            get_thread_id, database_engine, subscription.id
+        thread_id = await ensure_thread_id(
+            database_engine, subscription.id, agent.create_thread
         )
-        if thread_id is None:
-            created = await agent.create_thread()
-            thread_id = await run_in_threadpool(
-                store_thread_id, database_engine, subscription.id, created
-            )
         reply = await agent.send_message(thread_id, payload.message)
     except (SQLAlchemyError, AgentError) as error:
         raise HTTPException(status_code=503, detail="Service unavailable") from error
