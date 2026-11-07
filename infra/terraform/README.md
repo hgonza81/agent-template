@@ -55,3 +55,41 @@ Remote-state backend (bootstrap):
 
 Open items handled by later tasks: concrete resources and region (minimal dev
 deployment), subscription/quota/cost checks, plan review, and approved apply.
+
+## Minimal dev deployment (design, not yet provisioned)
+
+Design only; `environments/dev` holds exactly these resources in one new
+resource group, `rg-agent-template-dev`. Nothing is created without the
+reviewed plan and explicit apply approval, and no production resources exist
+in this environment.
+
+Region: one region for every resource, variable `location`, proposed
+`eastus2`. It is a proposal only and is confirmed or changed by the
+region/model availability check (next task) before any plan is generated.
+
+| Resource | Explicit sizing / policy |
+| --- | --- |
+| Log Analytics workspace + Application Insights (workspace-based) | `PerGB2018`, retention 30 days, daily ingestion cap 0.5 GB; no prompt/response data |
+| Azure Container Registry | `Basic`, admin user disabled, no geo-replication, untagged-manifest cleanup |
+| Container Apps environment (Consumption) | No zone redundancy, no dedicated workload profile |
+| Container App `api` | min replicas 0, max 2, 0.5 vCPU / 1 GiB, ingress restricted to the web app if the topology allows, otherwise external with JWT validation |
+| Container App `web` | min replicas 0, max 2, 0.25 vCPU / 0.5 GiB, the only public ingress, HTTPS only |
+| User-assigned managed identity `id-agent-template-dev-api` | Used by `api` |
+| PostgreSQL Flexible Server | Burstable `B1ms`, 32 GiB storage, backup retention 7 days, no HA, no geo-redundant backup; sizing re-checked against availability |
+| Azure AI Foundry project + one model deployment | Model, capacity (TPM quota), and region chosen in the availability/cost check; capacity capped low; no live calls until approved |
+| Consumption budget + alert rules | Monthly budget of USD 50 (approved dev ceiling) with notifications; alerts may lag and are not a hard cap |
+
+Identity and least privilege:
+
+- The API runs as the user-assigned identity only. Roles: `AcrPull` on the
+  registry, the Foundry data-plane user role scoped to the project, and
+  PostgreSQL access through an Entra database role if supported (otherwise a
+  secret in Key Vault, added only then). No subscription-wide or
+  resource-group-wide Owner/Contributor for workloads.
+- The web app needs no Azure data-plane identity.
+- Key Vault is omitted unless a secret is unavoidable.
+- The deploying human or later CI identity is outside this module.
+
+Explicitly excluded: Front Door, API Management, VNet/private endpoints (cost
+and network exposure decided in the review), zone redundancy, geo-replication,
+Grafana/ELK, additional environments.
