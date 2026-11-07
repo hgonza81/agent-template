@@ -201,3 +201,14 @@ still have recorded a message that was already being sent. The rate and
 concurrency limiters are in-memory per API process, so size them per instance
 (or add a shared store) when scaling out. Retrying after a timeout or failure
 is safe: no thread reference is stored for a failed creation.
+
+### End-to-end local chat tests
+
+`tests/test_chat_e2e.py` runs the whole path with no Azure: tokens from the
+loopback OIDC issuer are validated by the production validator, the real test
+database stores subscriptions and thread references, and `FakeChatAgent`
+answers. It proves a user keeps one persistent conversation, that two users get
+separate threads and histories (including interleaved messages), that supplying
+another user's thread, subscription, user, or agent ID is rejected with `422`
+without touching their conversation, and that missing or under-scoped tokens
+never reach the agent.

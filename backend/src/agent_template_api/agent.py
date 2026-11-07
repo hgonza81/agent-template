@@ -80,6 +80,10 @@ class FakeChatAgent:
         messages.append(message)
         return f"Fake reply {len(messages)}: {message}"
 
+    def history(self, thread_id: str) -> list[str]:
+        """User messages recorded in a thread (test inspection only)."""
+        return list(self._threads[thread_id])
+
     def thread_ids(self) -> list[str]:
         return list(self._threads)
 
