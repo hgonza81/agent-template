@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     database_url: SecretStr
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     otel_exporter_otlp_endpoint: AnyHttpUrl | None = None
+    # "fake" is the deterministic local agent; the Foundry adapter is added later.
+    agent_provider: Literal["fake"] = "fake"
     # Entra External ID values are pending provisioning; auth stays disabled
     # (protected routes return 503) until all four are configured.
     oidc_issuer: str | None = None

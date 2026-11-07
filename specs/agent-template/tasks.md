@@ -58,7 +58,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 
 ## Phase 5: Basic chat, fake agent, then Foundry
 
-- [ ] Define a typed server-side agent interface and deterministic fake implementation so local work and tests do not require Azure.
+- [x] Define a typed server-side agent interface and deterministic fake implementation so local work and tests do not require Azure.
 - [ ] Implement the plain-agent chat screen and authenticated API flow: no custom persona/system prompt, tools, retrieval, or advanced orchestration.
 - [ ] Implement atomic creation/storage of one server-owned conversation/thread reference per authenticated subscription; reject user-supplied user, subscription, agent, or provider-thread IDs.
 - [ ] Add bounded message size, request rate/concurrency controls, timeouts, safe error handling, and tests for success, provider failure, timeout, retry, and cancellation/disconnect behavior.

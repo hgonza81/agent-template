@@ -150,3 +150,14 @@ loopback OIDC discovery/JWKS server. Frontend flow tests
 (`src/testing/FakeAuthProvider.tsx`) and a stubbed `fetch`, which is not
 imported by the application bundle. Use real Entra External ID only for manual
 acceptance checks once the tenant and app registrations are provisioned.
+
+## Chat agent interface
+
+`agent_template_api.agent` defines the server-side `ChatAgent` protocol
+(`create_thread`, `send_message`), the content-free `AgentError` family, and a
+deterministic in-memory `FakeChatAgent` so local work and tests need no Azure.
+It is a plain agent: no persona/system prompt, tools, or retrieval.
+`AGENT_PROVIDER=fake` (the default) selects the fake; the Foundry adapter will
+add a second value later. The fake replies `Fake reply N: <message>` and
+supports injected delays and failures for timeout, error, and cancellation
+tests. Routes depend on the protocol only (`get_chat_agent`).
