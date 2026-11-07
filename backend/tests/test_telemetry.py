@@ -78,8 +78,8 @@ def test_instrumentation_exports_privacy_safe_traces_and_http_metrics(
     app = FastAPI()
     query_secret = "private-query-value"
 
-    @app.get("/records/{record_id}")
-    def get_record(record_id: str) -> dict[str, str]:
+    @app.post("/records/{record_id}")
+    def post_record(record_id: str, payload: dict[str, str]) -> dict[str, str]:
         with sqlite_engine.connect() as connection:
             connection.execute(text(f"SELECT '{query_secret}'"))
         return {"record_id": record_id}
@@ -115,11 +115,41 @@ def test_instrumentation_exports_privacy_safe_traces_and_http_metrics(
     )
     path_secret = "private-path-value"
     query_parameter_secret = "private-url-query-value"
+    bearer_token = "telemetry-bearer-token-unique"
+    api_key = "telemetry-api-key-unique"
+    cookie = "telemetry-cookie-unique"
+    password = "telemetry-password-unique"
+    email = "telemetry-email-unique@example.test"
+    phone_number = "+1-202-555-0191"
+    identity_subject = "telemetry-identity-subject-unique"
+    sensitive_values = (
+        query_secret,
+        path_secret,
+        query_parameter_secret,
+        bearer_token,
+        api_key,
+        cookie,
+        password,
+        email,
+        phone_number,
+        identity_subject,
+    )
 
     try:
         with TestClient(app) as client:
-            response = client.get(
-                f"/records/{path_secret}?access_token={query_parameter_secret}"
+            response = client.post(
+                f"/records/{path_secret}?access_token={query_parameter_secret}",
+                headers={
+                    "Authorization": f"Bearer {bearer_token}",
+                    "X-API-Key": api_key,
+                    "Cookie": f"session={cookie}",
+                },
+                json={
+                    "password": password,
+                    "email": email,
+                    "phone_number": phone_number,
+                    "identity_subject": identity_subject,
+                },
             )
 
         assert response.status_code == 200
@@ -128,9 +158,10 @@ def test_instrumentation_exports_privacy_safe_traces_and_http_metrics(
         spans = span_exporter.get_finished_spans()
         assert len(spans) >= 2
         exported = "\n".join(span.to_json() for span in spans)
-        assert path_secret not in exported
-        assert query_parameter_secret not in exported
-        assert query_secret not in exported
+        assert all(value not in exported for value in sensitive_values)
+        assert "Authorization" not in exported
+        assert "X-API-Key" not in exported
+        assert "Cookie" not in exported
         assert "db.statement" not in exported
         assert "exception" not in exported.lower()
         assert any(
@@ -179,8 +210,10 @@ def test_instrumentation_exports_privacy_safe_traces_and_http_metrics(
         }
         assert "http.server.duration" in metric_names
         serialized_metrics = metrics_data.to_json()
-        assert path_secret not in serialized_metrics
-        assert query_parameter_secret not in serialized_metrics
+        assert all(value not in serialized_metrics for value in sensitive_values)
+        assert "Authorization" not in serialized_metrics
+        assert "X-API-Key" not in serialized_metrics
+        assert "Cookie" not in serialized_metrics
     finally:
         FastAPIInstrumentor.uninstrument_app(app)
         sqlalchemy_instrumentor.uninstrument()

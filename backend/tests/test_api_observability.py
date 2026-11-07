@@ -37,7 +37,7 @@ def test_request_id_is_returned_and_logs_exclude_sensitive_request_data(
     caplog: LogCaptureFixture,
 ) -> None:
     request_id = "7e8f2f28-6f9e-4e8d-b903-25cc171b753d"
-    secret = "test-token-do-not-log"
+    secret = "test-bearer-token-do-not-log"
     caplog.set_level(logging.INFO, logger="agent_template_api.requests")
 
     with TestClient(api_module.app) as client:
@@ -65,6 +65,65 @@ def test_request_id_is_returned_and_logs_exclude_sensitive_request_data(
     assert secret not in records[0].getMessage()
     assert "access_token" not in records[0].getMessage()
     assert "Authorization" not in records[0].getMessage()
+
+
+def test_request_logs_exclude_credentials_and_personal_data(
+    api_module: ModuleType,
+    caplog: LogCaptureFixture,
+) -> None:
+    class PrivatePayload(BaseModel):
+        password: str
+        email: str
+        phone_number: str
+        identity_subject: str
+
+    def accept_private_payload(payload: PrivatePayload) -> dict[str, str]:
+        return {"status": "accepted"}
+
+    api_module.app.add_api_route(
+        "/test-private-data",
+        accept_private_payload,
+        methods=["POST"],
+    )
+    access_token = "request-access-token-unique"
+    api_key = "request-api-key-unique"
+    cookie = "request-cookie-unique"
+    password = "request-password-unique"
+    email = "person-email-unique@example.test"
+    phone_number = "+1-202-555-0184"
+    identity_subject = "person-subject-unique"
+    sensitive_values = (
+        access_token,
+        api_key,
+        cookie,
+        password,
+        email,
+        phone_number,
+        identity_subject,
+    )
+    caplog.set_level(logging.INFO, logger="agent_template_api.requests")
+
+    with TestClient(api_module.app) as client:
+        response = client.post(
+            f"/test-private-data?access_token={access_token}",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "X-API-Key": api_key,
+                "Cookie": f"session={cookie}",
+            },
+            json={
+                "password": password,
+                "email": email,
+                "phone_number": phone_number,
+                "identity_subject": identity_subject,
+            },
+        )
+
+    assert response.status_code == 200
+    records = request_logs(caplog)
+    assert len(records) == 1
+    serialized_logs = "\n".join(record.getMessage() for record in records)
+    assert all(value not in serialized_logs for value in sensitive_values)
 
 
 def test_invalid_request_id_is_replaced_with_a_generated_id(
