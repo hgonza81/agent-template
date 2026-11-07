@@ -82,7 +82,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 ## Phase 7: Terraform and Azure dev foundation (approval required)
 
 - [x] Pin Terraform CLI/AzureRM provider versions and commit provider lock files for supported CI/developer platforms.
-- [ ] Add Terraform format/init/validate and security/policy checks to PR CI; do not require Azure credentials or apply resources from CI.
+- [x] Add Terraform format/init/validate and security/policy checks to PR CI; do not require Azure credentials or apply resources from CI.
 - [ ] Design isolated per-environment infrastructure and a separately bootstrapped remote-state backend with Entra data-plane RBAC, TLS, versioning, and soft delete.
 - [ ] Define a minimal dev deployment with only required resources, explicit scaling/retention/region, managed identity, least privilege, and no production resources.
 - [ ] Check subscription restrictions, current credit/spend limits, model/database region availability, quotas, data processing, and itemized expected monthly cost.

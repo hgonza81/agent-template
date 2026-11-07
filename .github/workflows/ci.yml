@@ -136,3 +136,39 @@ jobs:
 
       - name: Scan repository history for secrets
         run: gitleaks git --redact --no-banner
+
+  terraform:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      TF_IN_AUTOMATION: '1'
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra/terraform
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: '1.17.1'
+          terraform_wrapper: false
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive -diff
+
+      - name: Initialize without a backend or credentials
+        run: terraform init -backend=false -input=false -lockfile=readonly
+
+      - name: Validate
+        run: terraform validate
+
+      - name: Security and policy scan
+        run: |
+          python3 -m pip install --user 'checkov==3.2.*'
+          "$HOME/.local/bin/checkov" --directory . --framework terraform \
+            --quiet --compact
