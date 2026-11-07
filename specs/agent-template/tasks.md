@@ -54,7 +54,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Implement `GET /api/v1/me/subscription` as an idempotent, transaction-safe provisioner; derive identity only from validated `(issuer, subject)` claims.
 - [x] Ensure email is display/contact data only and cannot identify, merge, or authorize accounts.
 - [x] Add tests for retry, concurrent provisioning, changed/shared email claims, and authorization boundaries.
-- [ ] Complete local UI/API flow tests using a safe test identity strategy; use real Entra only when the tenant and app registrations are configured.
+- [x] Complete local UI/API flow tests using a safe test identity strategy; use real Entra only when the tenant and app registrations are configured.
 
 ## Phase 5: Basic chat, fake agent, then Foundry
 

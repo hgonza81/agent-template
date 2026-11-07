@@ -139,3 +139,14 @@ Email is display/contact data only. Accounts are looked up exclusively by
 authorizes anything. A valid, different email claim updates the stored
 snapshot in place (no new subscription); a missing or invalid claim keeps the
 existing snapshot. Two identities sharing an email get separate subscriptions.
+
+## Test identity strategy
+
+Local and CI tests never use a real tenant or credentials. Backend flow tests
+(`tests/test_local_identity_flow.py`) mint tokens with a throwaway RSA key and
+validate them with the production `TokenValidator` and HTTP fetcher against a
+loopback OIDC discovery/JWKS server. Frontend flow tests
+(`frontend/src/flow.test.tsx`) drive the real UI with an in-memory fake sign-in
+(`src/testing/FakeAuthProvider.tsx`) and a stubbed `fetch`, which is not
+imported by the application bundle. Use real Entra External ID only for manual
+acceptance checks once the tenant and app registrations are provisioned.

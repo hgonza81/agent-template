@@ -1,13 +1,23 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
 import { AuthContext, type AuthState, type AuthStatus } from './auth/AuthContext'
 import { saveReturnPath } from './auth/returnPath'
 
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() =>
+      Promise.resolve(Response.json({ id: 'sub-1', started_at: '2026-01-01T00:00:00Z', email: null })),
+    ),
+  )
+})
+
 afterEach(() => {
+  vi.unstubAllGlobals()
   cleanup()
   sessionStorage.clear()
 })
@@ -129,10 +139,10 @@ describe('protected route', () => {
     expect(screen.queryByRole('button', { name: 'Sign in' })).toBeNull()
   })
 
-  it('shows the chat page and sign-out to authenticated users', () => {
+  it('shows the chat page and sign-out to authenticated users', async () => {
     const state = renderApp('authenticated', '/chat')
 
-    expect(screen.getByRole('heading', { name: 'Chat' })).toBeDefined()
+    expect(await screen.findByRole('heading', { name: 'Chat' })).toBeDefined()
     expect(screen.getByText('Ada Lovelace')).toBeDefined()
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
     expect(state.signOut).toHaveBeenCalled()
@@ -146,11 +156,11 @@ describe('callback page', () => {
     expect(screen.getByRole('progressbar', { name: 'Completing sign-in' })).toBeDefined()
   })
 
-  it('returns authenticated users to the remembered route', () => {
+  it('returns authenticated users to the remembered route', async () => {
     saveReturnPath('/chat')
     renderApp('authenticated', '/auth/callback')
 
-    expect(screen.getByRole('heading', { name: 'Chat' })).toBeDefined()
+    expect(await screen.findByRole('heading', { name: 'Chat' })).toBeDefined()
     expect(sessionStorage.getItem('agent-template.return-path')).toBeNull()
   })
 
