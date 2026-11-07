@@ -18,6 +18,22 @@ export interface ErrorResponse {
   request_id: string;
 }
 
+/** SubscriptionResponse */
+export interface SubscriptionResponse {
+  /** Email */
+  email?: string | null;
+  /**
+   * Id
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Started At
+   * @format date-time
+   */
+  started_at: string;
+}
+
 export namespace Api {
   /**
    * No description
@@ -45,5 +61,20 @@ export namespace Api {
     export type RequestBody = never;
     export type RequestHeaders = {};
     export type ResponseBody = Record<string, string>;
+  }
+
+  /**
+   * No description
+   * @name GetMySubscriptionApiV1MeSubscriptionGet
+   * @summary Get My Subscription
+   * @request GET:/api/v1/me/subscription
+   * @secure
+   */
+  export namespace GetMySubscriptionApiV1MeSubscriptionGet {
+    export type RequestParams = {};
+    export type RequestQuery = {};
+    export type RequestBody = never;
+    export type RequestHeaders = {};
+    export type ResponseBody = SubscriptionResponse;
   }
 }

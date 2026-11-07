@@ -2,11 +2,13 @@ import json
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from importlib.metadata import version
 from time import perf_counter
+from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -18,9 +20,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
+from agent_template_api.auth import TokenIdentity, get_current_identity
 from agent_template_api.database import create_database_engine
 from agent_template_api.logging_config import configure_logging
 from agent_template_api.settings import get_settings
+from agent_template_api.subscriptions import provision_subscription
 from agent_template_api.telemetry import TelemetryRuntime, configure_telemetry
 
 settings = get_settings()
@@ -42,6 +46,12 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 class ErrorResponse(BaseModel):
     detail: str
     request_id: str
+
+
+class SubscriptionResponse(BaseModel):
+    id: UUID
+    started_at: datetime
+    email: str | None = None
 
 
 app = FastAPI(
@@ -199,6 +209,32 @@ def health_ready() -> dict[str, str]:
         ) from error
 
     return {"status": "ok"}
+
+
+@app.get(
+    "/api/v1/me/subscription",
+    response_model=SubscriptionResponse,
+    responses={
+        401: {"model": ErrorResponse, "description": "Missing or invalid token"},
+        403: {"model": ErrorResponse, "description": "Token lacks the required scope"},
+        503: {
+            "model": ErrorResponse,
+            "description": "Identity provider or database unavailable",
+        },
+    },
+)
+def get_my_subscription(
+    identity: Annotated[TokenIdentity, Depends(get_current_identity)],
+) -> SubscriptionResponse:
+    try:
+        subscription = provision_subscription(database_engine, identity)
+    except SQLAlchemyError as error:
+        raise HTTPException(status_code=503, detail="Service unavailable") from error
+    return SubscriptionResponse(
+        id=subscription.id,
+        started_at=subscription.started_at,
+        email=subscription.email_snapshot,
+    )
 
 
 app.state.telemetry_runtime = configure_telemetry(

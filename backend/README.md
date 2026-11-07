@@ -119,3 +119,15 @@ unreachable or auth not configured). Responses never describe why a token
 failed. Tenant values are pending provisioning: leave the four `OIDC_*`
 variables blank in `backend/.env` (auth routes return `503`) or set all four.
 Tests use locally generated keys and never contact a real tenant.
+
+## Subscription provisioning
+
+`GET /api/v1/me/subscription` requires a valid bearer token and returns the
+caller's free subscription (`id`, `started_at`, `email`), creating it on the
+first call. Identity is the validated `(issuer, subject)` pair only; the
+request has no body and query/header values are ignored. Creation is a single
+`INSERT ... ON CONFLICT DO NOTHING` on the unique identity constraint followed
+by a read in the same transaction, so retries and concurrent first requests
+return the same row. The response never includes the issuer, subject, or
+Foundry thread ID. The email is a normalized display snapshot written at
+creation; see the email policy in the next task.
