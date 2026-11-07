@@ -218,3 +218,159 @@ def test_email_is_not_indexed_or_unique_so_it_cannot_identify_accounts() -> None
         for constraint in table.constraints
         if hasattr(constraint, "columns")
     )
+
+
+def test_concurrent_first_requests_create_exactly_one_subscription(
+    api_module: ModuleType, subject: str
+) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from agent_template_api.subscriptions import provision_subscription
+
+    workers = 8
+    barrier = Barrier(workers)
+    identity = TokenIdentity(
+        issuer=ISSUER, subject=subject, scopes=frozenset(), email="c@example.test"
+    )
+
+    def provision() -> str:
+        barrier.wait(timeout=10)
+        return str(provision_subscription(api_module.database_engine, identity).id)
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        ids = list(pool.map(lambda _: provision(), range(workers)))
+
+    assert len(set(ids)) == 1
+    assert count(api_module, subject) == 1
+
+
+def test_retry_after_a_failed_attempt_provisions_once(
+    monkeypatch: MonkeyPatch, api_module: ModuleType, subject: str
+) -> None:
+    from sqlalchemy.exc import OperationalError
+
+    import agent_template_api.subscriptions as subscriptions
+
+    authenticate_as(api_module, subject)
+    real_normalize = subscriptions.normalize_email
+    calls = {"n": 0}
+
+    def flaky(email: str | None) -> str | None:
+        calls["n"] += 1
+        if calls["n"] == 2:  # after the insert, before commit
+            raise OperationalError("SELECT", {}, RuntimeError("connection lost"))
+        return real_normalize(email)
+
+    monkeypatch.setattr(subscriptions, "normalize_email", flaky)
+    with TestClient(api_module.app) as client:
+        failed = client.get("/api/v1/me/subscription")
+        assert failed.status_code == 503
+        assert count(api_module, subject) == 0  # the failed transaction rolled back
+        retried = client.get("/api/v1/me/subscription")
+        again = client.get("/api/v1/me/subscription")
+
+    assert retried.status_code == 200
+    assert retried.json() == again.json()
+    assert count(api_module, subject) == 1
+
+
+class TestAuthorizationBoundaries:
+    """Real token validation in front of the endpoint; no rows on rejection."""
+
+    @pytest.fixture
+    def validated_client(
+        self, api_module: ModuleType
+    ) -> Iterator[tuple[TestClient, str]]:
+        from test_auth import (
+            AUDIENCE,
+            DISCOVERY,
+            SCOPE,
+            Fetcher,
+        )
+        from test_auth import (
+            ISSUER as TOKEN_ISSUER,
+        )
+
+        from agent_template_api.auth import TokenValidator, token_validator_provider
+
+        validator = TokenValidator(
+            issuer=TOKEN_ISSUER,
+            discovery_url=DISCOVERY,
+            audience=AUDIENCE,
+            required_scope=SCOPE,
+            fetcher=Fetcher(),
+        )
+        api_module.app.dependency_overrides[token_validator_provider] = lambda: (
+            lambda: validator
+        )
+        with TestClient(api_module.app) as client:
+            yield client, TOKEN_ISSUER
+
+    def get(self, client: TestClient, token: str | None) -> int:
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        return client.get("/api/v1/me/subscription", headers=headers).status_code
+
+    def test_valid_token_provisions_by_issuer_and_subject(
+        self,
+        api_module: ModuleType,
+        subject: str,
+        validated_client: tuple[TestClient, str],
+    ) -> None:
+        from test_auth import token
+
+        client, _ = validated_client
+        assert self.get(client, token(sub=subject)) == 200
+        assert self.get(client, token(sub=subject)) == 200
+        assert count(api_module, subject) == 1
+
+    def test_rejected_tokens_never_create_a_subscription(
+        self,
+        api_module: ModuleType,
+        subject: str,
+        validated_client: tuple[TestClient, str],
+    ) -> None:
+        import time
+
+        from test_auth import OTHER_KEY, token
+
+        client, _ = validated_client
+        expected = {
+            "missing": (None, 401),
+            "garbage": ("junk", 401),
+            "wrong-issuer": (token(sub=subject, iss="https://evil.example.test"), 401),
+            "wrong-audience": (token(sub=subject, aud="api://other"), 401),
+            "expired": (token(sub=subject, exp=int(time.time()) - 3600), 401),
+            "bad-signature": (token(sub=subject, key=OTHER_KEY), 401),
+            "insufficient-scope": (token(sub=subject, scp="other"), 403),
+        }
+        for name, (value, status) in expected.items():
+            assert self.get(client, value) == status, name
+        assert count(api_module, subject) == 0
+
+    def test_a_token_only_reaches_its_own_subscription(
+        self,
+        api_module: ModuleType,
+        subject: str,
+        validated_client: tuple[TestClient, str],
+    ) -> None:
+        from test_auth import token
+
+        client, _ = validated_client
+        other = f"{subject}-other"
+        try:
+            mine = client.get(
+                "/api/v1/me/subscription",
+                headers={"Authorization": f"Bearer {token(sub=subject)}"},
+                params={"subscription_id": "anything"},
+            ).json()
+            theirs = client.get(
+                "/api/v1/me/subscription",
+                headers={"Authorization": f"Bearer {token(sub=other)}"},
+            ).json()
+            assert mine["id"] != theirs["id"]
+        finally:
+            with Session(api_module.database_engine) as session, session.begin():
+                session.execute(
+                    delete(Subscription).where(Subscription.identity_subject == other)
+                )

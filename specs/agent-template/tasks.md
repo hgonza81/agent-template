@@ -53,7 +53,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Build accessible registration/login/forgot-password entry points using the verified Entra External ID flows; do not implement password storage or reset in this app.
 - [x] Implement `GET /api/v1/me/subscription` as an idempotent, transaction-safe provisioner; derive identity only from validated `(issuer, subject)` claims.
 - [x] Ensure email is display/contact data only and cannot identify, merge, or authorize accounts.
-- [ ] Add tests for retry, concurrent provisioning, changed/shared email claims, and authorization boundaries.
+- [x] Add tests for retry, concurrent provisioning, changed/shared email claims, and authorization boundaries.
 - [ ] Complete local UI/API flow tests using a safe test identity strategy; use real Entra only when the tenant and app registrations are configured.
 
 ## Phase 5: Basic chat, fake agent, then Foundry
