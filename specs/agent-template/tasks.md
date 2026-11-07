@@ -65,6 +65,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 - [x] Add end-to-end local fake-agent tests, including proof a user cannot access another user's conversation.
 - [x] Confirm provider/model configuration, region, data handling, quotas, and cost before enabling live Azure AI Foundry calls.
 - [ ] Implement the Foundry adapter and managed-identity authorization; keep provider calls server-side and ensure no prompt/message/output is captured in telemetry.
+  BLOQUEADA: requiere proyecto Foundry aprobado/aprovisionado y managed identity en Azure; verificación en vivo no posible localmente.
 - [ ] Add automated tests proving chat content, prompts, model output, tokens, credentials, and unnecessary personal data are absent from logs and telemetry.
 - [ ] Decide streaming only after a focused spike verifies reliable cancellation, disconnect cleanup, and testability; ship a tested non-streaming response first if needed.
 - [ ] Document conversation retention/deletion behavior and verify the provider's actual capabilities before production.
@@ -80,7 +81,7 @@ The project starts as a documentation-only folder, not a Git repository. Keep de
 
 ## Phase 7: Terraform and Azure dev foundation (approval required)
 
-- [ ] Pin Terraform CLI/AzureRM provider versions and commit provider lock files for supported CI/developer platforms.
+- [x] Pin Terraform CLI/AzureRM provider versions and commit provider lock files for supported CI/developer platforms.
 - [ ] Add Terraform format/init/validate and security/policy checks to PR CI; do not require Azure credentials or apply resources from CI.
 - [ ] Design isolated per-environment infrastructure and a separately bootstrapped remote-state backend with Entra data-plane RBAC, TLS, versioning, and soft delete.
 - [ ] Define a minimal dev deployment with only required resources, explicit scaling/retention/region, managed identity, least privilege, and no production resources.
