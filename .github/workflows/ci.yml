@@ -115,6 +115,38 @@ jobs:
       - name: Build frontend production bundle
         run: npm run build
 
+  containers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            context: backend
+          - name: frontend
+            context: frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Build ${{ matrix.name }} image (not pushed)
+        run: |
+          docker build --pull --tag "agent-template-${{ matrix.name }}:ci" \
+            "${{ matrix.context }}"
+
+      - name: Scan ${{ matrix.name }} image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: agent-template-${{ matrix.name }}:ci
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
   secrets:
     runs-on: ubuntu-latest
     timeout-minutes: 10
