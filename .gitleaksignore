@@ -1,0 +1,5 @@
+# Reviewed false positives (gitleaks rule hashicorp-tf-password). The matched text is
+# `password_secret_name = "<name>"`, the NAME of a Container Apps secret reference in
+# Terraform, not a credential. The real values come from ignored tfvars / TF_VAR_*.
+a50e6d6488264cb65eac4b4fd62005fdd0e58b20:infra/terraform/environments/dev/apps.tf:hashicorp-tf-password:54
+a50e6d6488264cb65eac4b4fd62005fdd0e58b20:infra/terraform/environments/dev/apps.tf:hashicorp-tf-password:153

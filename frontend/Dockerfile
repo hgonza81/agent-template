@@ -17,6 +17,8 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e AS runtime
+# Links the GHCR package to this repository so the workflow token may publish it.
+LABEL org.opencontainers.image.source="https://github.com/hgonza81/agent-template"
 # Apply Alpine security fixes that the pinned base image does not have yet.
 USER root
 RUN apk upgrade --no-cache

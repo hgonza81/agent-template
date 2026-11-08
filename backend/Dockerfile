@@ -12,6 +12,8 @@ COPY src ./src
 RUN uv sync --frozen --no-dev --no-editable
 
 FROM python@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc AS runtime
+# Links the GHCR package to this repository so the workflow token may publish it.
+LABEL org.opencontainers.image.source="https://github.com/hgonza81/agent-template"
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 # Apply Debian security fixes that the pinned base image does not have yet, and
 # drop pip/setuptools: the runtime never installs packages, and their vendored
