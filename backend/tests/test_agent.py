@@ -95,3 +95,21 @@ def test_unknown_provider_is_rejected_by_settings() -> None:
             agent_provider="openai",
             _env_file=None,
         )
+
+
+def test_foundry_provider_requires_configuration_and_never_falls_back() -> None:
+    with pytest.raises(ValueError):
+        create_chat_agent("foundry")
+    with pytest.raises(ValueError):
+        create_chat_agent("foundry", foundry_project_endpoint="https://x.example/")
+
+
+def test_foundry_provider_builds_the_adapter_without_network() -> None:
+    from agent_template_api.foundry_agent import FoundryChatAgent
+
+    agent = create_chat_agent(
+        "foundry",
+        foundry_project_endpoint="https://x.example/",
+        foundry_deployment="chat",
+    )
+    assert isinstance(agent, FoundryChatAgent)

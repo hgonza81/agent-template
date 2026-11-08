@@ -52,6 +52,7 @@ chat_rate_limiter = RateLimiter(settings.chat_rate_limit_per_minute)
 
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    get_chat_agent()  # fail at startup if the configured provider is unusable
     try:
         yield
     finally:

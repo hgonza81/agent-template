@@ -13,8 +13,12 @@ class Settings(BaseSettings):
     database_url: SecretStr
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     otel_exporter_otlp_endpoint: AnyHttpUrl | None = None
-    # "fake" is the deterministic local agent; the Foundry adapter is added later.
-    agent_provider: Literal["fake"] = "fake"
+    # "fake" (default) is the deterministic local agent: no network, no cost.
+    # "foundry" calls the real Azure AI Foundry deployment and must be enabled
+    # explicitly; missing configuration then fails at startup (never the fake).
+    agent_provider: Literal["fake", "foundry"] = "fake"
+    foundry_project_endpoint: AnyHttpUrl | None = None
+    foundry_deployment: str | None = None
     # Chat limits. Defaults follow the agreed targets: p95 <= 20 s and 5
     # concurrent chat requests; the timeout is a hard ceiling above the p95.
     chat_max_message_chars: int = Field(default=4000, ge=1, le=100_000)
@@ -96,6 +100,32 @@ class Settings(BaseSettings):
                 "and contain no credentials, query, or fragment"
             )
         return url
+
+    @field_validator("foundry_project_endpoint", "foundry_deployment", mode="before")
+    @classmethod
+    def blank_foundry_value_is_unset(cls, value: str | None) -> str | None:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @model_validator(mode="after")
+    def validate_foundry_configuration(self) -> "Settings":
+        if self.agent_provider == "foundry":
+            endpoint = self.foundry_project_endpoint
+            if (
+                endpoint is None
+                or self.foundry_deployment is None
+                or endpoint.scheme != "https"
+                or endpoint.username is not None
+                or endpoint.password is not None
+                or endpoint.query
+                or endpoint.fragment
+            ):
+                raise ValueError(
+                    "AGENT_PROVIDER=foundry requires FOUNDRY_PROJECT_ENDPOINT (HTTPS, "
+                    "no credentials) and FOUNDRY_DEPLOYMENT"
+                )
+        return self
 
     @model_validator(mode="after")
     def validate_oidc_is_all_or_nothing(self) -> "Settings":

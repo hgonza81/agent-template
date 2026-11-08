@@ -147,3 +147,33 @@ def test_blank_oidc_values_mean_unconfigured() -> None:
     )
     assert settings.oidc_issuer is None
     assert settings.oidc_discovery_url is None
+
+
+def _base(
+    provider: str = "fake", endpoint: str | None = None, deployment: str | None = None
+) -> Settings:
+    return Settings(
+        cors_allowed_origins=["http://127.0.0.1:5173"],
+        database_url="postgresql+psycopg://u:p@127.0.0.1:5433/db",
+        agent_provider=provider,
+        foundry_project_endpoint=endpoint,
+        foundry_deployment=deployment,
+        _env_file=None,
+    )
+
+
+def test_agent_provider_defaults_to_fake() -> None:
+    assert _base().agent_provider == "fake"
+
+
+def test_foundry_provider_without_configuration_fails_at_startup() -> None:
+    with pytest.raises(ValidationError):
+        _base("foundry")
+    with pytest.raises(ValidationError):
+        _base("foundry", "https://x.example/")
+    with pytest.raises(ValidationError):
+        _base("foundry", "http://x.example/", "chat")
+
+
+def test_foundry_provider_with_configuration_is_accepted() -> None:
+    assert _base("foundry", "https://x.example/", "chat").foundry_deployment == "chat"

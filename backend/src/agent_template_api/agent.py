@@ -88,11 +88,26 @@ class FakeChatAgent:
         return list(self._threads)
 
 
-def create_chat_agent(provider: str) -> ChatAgent:
-    """Build the agent for a configured provider name."""
+def create_chat_agent(
+    provider: str,
+    *,
+    foundry_project_endpoint: str | None = None,
+    foundry_deployment: str | None = None,
+) -> ChatAgent:
+    """Build the agent for a configured provider name (never falls back)."""
     if provider == "fake":
         return FakeChatAgent()
-    raise ValueError("Unsupported agent provider")  # Foundry adapter comes later
+    if provider == "foundry":
+        if not foundry_project_endpoint or not foundry_deployment:
+            raise ValueError("Foundry provider is not configured")
+        from agent_template_api.foundry_agent import FoundryChatAgent
+        from agent_template_api.foundry_client import OpenAIFoundryClient
+
+        return FoundryChatAgent(
+            OpenAIFoundryClient(endpoint=foundry_project_endpoint),
+            agent_id=foundry_deployment,
+        )
+    raise ValueError("Unsupported agent provider")
 
 
 _agent: ChatAgent | None = None
@@ -104,5 +119,11 @@ def get_chat_agent() -> ChatAgent:
     if _agent is None:
         from agent_template_api.settings import get_settings
 
-        _agent = create_chat_agent(get_settings().agent_provider)
+        configured = get_settings()
+        endpoint = configured.foundry_project_endpoint
+        _agent = create_chat_agent(
+            configured.agent_provider,
+            foundry_project_endpoint=str(endpoint) if endpoint else None,
+            foundry_deployment=configured.foundry_deployment,
+        )
     return _agent

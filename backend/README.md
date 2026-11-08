@@ -164,10 +164,32 @@ acceptance checks once the tenant and app registrations are provisioned.
 (`create_thread`, `send_message`), the content-free `AgentError` family, and a
 deterministic in-memory `FakeChatAgent` so local work and tests need no Azure.
 It is a plain agent: no persona/system prompt, tools, or retrieval.
-`AGENT_PROVIDER=fake` (the default) selects the fake; the Foundry adapter will
-add a second value later. The fake replies `Fake reply N: <message>` and
+`AGENT_PROVIDER=fake` (the default) selects the fake. The fake replies `Fake reply N: <message>` and
 supports injected delays and failures for timeout, error, and cancellation
 tests. Routes depend on the protocol only (`get_chat_agent`).
+
+### Live Foundry (opt-in)
+
+`AGENT_PROVIDER=foundry` calls the real Azure AI Foundry model deployment
+(Conversations + Responses APIs on the OpenAI-compatible endpoint) with
+`DefaultAzureCredential`: your `az login` locally, the managed identity in
+Azure. No keys or secrets. Requires the Foundry User role on the project.
+`FOUNDRY_PROJECT_ENDPOINT` (HTTPS) and `FOUNDRY_DEPLOYMENT` are mandatory in this mode;
+if either is missing the API fails at startup (it never falls back to the
+fake). Dev values: project endpoint `https://ai-agent-template-dev.services.ai.azure.com/api/projects/proj-agent-template-dev`
+(centralus), deployment `chat`
+(`gpt-5.4-nano`). Start locally:
+
+```sh
+az login
+AGENT_PROVIDER=foundry \
+FOUNDRY_PROJECT_ENDPOINT=https://ai-agent-template-dev.services.ai.azure.com/api/projects/proj-agent-template-dev \
+FOUNDRY_DEPLOYMENT=chat make backend
+```
+
+Requests send only the user message; no instructions, tools, or retrieval.
+Tests never call Foundry (a mock client is used); the live path is verified
+manually.
 
 ## Chat endpoint
 
