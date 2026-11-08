@@ -126,26 +126,103 @@ jobs:
         include:
           - name: backend
             context: backend
+            image: ghcr.io/hgonza81/agent-template-api
           - name: frontend
             context: frontend
+            image: ghcr.io/hgonza81/agent-template-web
+    env:
+      # Public build-time values for the frontend bundle (repository variables,
+      # not secrets). Unset variables fall back to blank / the dev API.
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://ca-agent-template-dev-api.gentlebush-bbce5bd2.centralus.azurecontainerapps.io' }}
+      VITE_ENTRA_AUTHORITY: ${{ vars.VITE_ENTRA_AUTHORITY }}
+      VITE_ENTRA_CLIENT_ID: ${{ vars.VITE_ENTRA_CLIENT_ID }}
+      VITE_API_SCOPES: ${{ vars.VITE_API_SCOPES }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
 
       - name: Build ${{ matrix.name }} image (not pushed)
         run: |
-          docker build --pull --tag "agent-template-${{ matrix.name }}:ci" \
+          args=()
+          if [ "${{ matrix.name }}" = "frontend" ]; then
+            args+=(
+              --build-arg "VITE_API_BASE_URL=$VITE_API_BASE_URL"
+              --build-arg "VITE_ENTRA_AUTHORITY=$VITE_ENTRA_AUTHORITY"
+              --build-arg "VITE_ENTRA_CLIENT_ID=$VITE_ENTRA_CLIENT_ID"
+              --build-arg "VITE_API_SCOPES=$VITE_API_SCOPES"
+            )
+          fi
+          docker build --pull "${args[@]}" \
+            --tag "${{ matrix.image }}:${{ github.sha }}" \
             "${{ matrix.context }}"
 
       - name: Scan ${{ matrix.name }} image for vulnerabilities
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: agent-template-${{ matrix.name }}:ci
+          image-ref: ${{ matrix.image }}:${{ github.sha }}
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'
           format: table
+
+      # Hand the exact scanned image to the publish job (never rebuilt there).
+      - name: Save scanned ${{ matrix.name }} image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: docker save "${{ matrix.image }}:${{ github.sha }}" --output "$RUNNER_TEMP/${{ matrix.name }}.tar"
+
+      - name: Upload scanned ${{ matrix.name }} image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: image-${{ matrix.name }}
+          path: ${{ runner.temp }}/${{ matrix.name }}.tar
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    # Only trusted pushes to main; never pull requests or forks. Runs only when
+    # every scan above passed. No Azure credentials; GITHUB_TOKEN only.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [containers]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      api_image: ${{ steps.push.outputs.api_image }}
+      web_image: ${{ steps.push.outputs.web_image }}
+    steps:
+      - name: Download scanned images
+        uses: actions/download-artifact@v8
+        with:
+          pattern: image-*
+          path: ${{ runner.temp }}/images
+          merge-multiple: true
+
+      - name: Log in to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Push images and record digests
+        id: push
+        run: |
+          echo "### Published images (immutable digests)" >> "$GITHUB_STEP_SUMMARY"
+          for pair in backend:api:agent-template-api frontend:web:agent-template-web; do
+            IFS=: read -r name key repo <<<"$pair"
+            image="ghcr.io/hgonza81/$repo"
+            docker load --input "$RUNNER_TEMP/images/$name.tar"
+            docker push "$image:${{ github.sha }}"
+            digest="$(docker inspect --format '{{index .RepoDigests 0}}' "$image:${{ github.sha }}")"
+            case "$digest" in
+              "$image"@sha256:*) ;;
+              *) echo "Unexpected digest reference for $name" >&2; exit 1 ;;
+            esac
+            echo "${key}_image=$digest" >> "$GITHUB_OUTPUT"
+            echo "- \`$digest\`" >> "$GITHUB_STEP_SUMMARY"
+          done
 
   secrets:
     runs-on: ubuntu-latest

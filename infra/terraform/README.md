@@ -408,3 +408,13 @@ Known state until Phase 8 publishes real images:
 - If `terraform apply` is interrupted, a stale state lock can remain; confirm no
   Terraform process is running, then `terraform force-unlock <id>`, and check
   Azure for resources created before the interruption (import them if needed).
+
+## Images from CI (ADR 0011)
+
+Pushes to `main` publish `ghcr.io/hgonza81/agent-template-api` and
+`ghcr.io/hgonza81/agent-template-web` after the Trivy scan passes. Read the
+digests from the `publish` job outputs (`api_image`, `web_image`) or the run
+summary, then set `api_image` / `web_image` to those `...@sha256:...` values.
+The web build reads the repository variables `VITE_API_BASE_URL` (default: the
+dev API URL), `VITE_ENTRA_AUTHORITY`, `VITE_ENTRA_CLIENT_ID` and
+`VITE_API_SCOPES` (default blank); these are public, not secrets.
