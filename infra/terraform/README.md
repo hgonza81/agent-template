@@ -317,3 +317,64 @@ privately or migrate it to the remote backend knowingly.
 Not verifiable yet (no Container Apps, ACR, PostgreSQL, or App Insights exist):
 health probes, API telemetry free of private data, and ingress TLS for the
 apps. These moved to Phase B tasks in `tasks.md`.
+
+## Phase B code and reviewed plan (not applied)
+
+Code in `environments/dev`: `monitoring.tf` (Log Analytics + workspace-based
+Application Insights, 0.1 GB/day cap, 30 days) and `apps.tf` (Container Apps
+environment on Consumption, user-assigned identity
+`id-agent-template-dev-api`, `Foundry User` for it on the project, Container
+Apps `api` and `web`). Decisions: ADRs 0005, 0009 and 0010. This supersedes
+the Phase B rows of the earlier design table (no ACR, no PostgreSQL, no Key
+Vault; ACR/`AcrPull` and the 0.5 GB cap no longer apply).
+
+Both apps: min replicas 0, max 2, external HTTPS ingress, liveness probes
+(`/api/v1/health/live`, `/healthz`). `api` 0.5 vCPU / 1 GiB, `web` 0.25 vCPU /
+0.5 GiB. Images come from `api_image` / `web_image` (default: a public
+placeholder for the first apply; later GHCR tags or digests).
+
+Inputs supplied outside git (`TF_VAR_*` or an ignored tfvars):
+`ghcr_username`, `ghcr_read_token` (sensitive, `read:packages` only),
+`database_url` (sensitive, Supabase session pooler,
+`postgresql+psycopg://...`), and optionally `oidc_issuer`,
+`oidc_discovery_url`, `oidc_audience`, `oidc_required_scope` (blank until the
+Entra tenant exists; protected routes return 503 meanwhile).
+
+Prerequisite (manual, needs approval): `Microsoft.App` and
+`Microsoft.OperationalInsights` are `Unregistered` (`Microsoft.ManagedIdentity`
+and `Microsoft.Insights` are registered). Provider registration is disabled in
+Terraform, so register them first.
+
+Plan (read-only against the remote state, dummy non-secret values for the
+sensitive variables): **7 to add, 0 to change, 0 to destroy**; Phase A
+resources untouched.
+
+| Create | Notes |
+| --- | --- |
+| Log Analytics workspace `log-agent-template-dev` | PerGB2018, 30 days, 0.1 GB/day; shared keys sensitive |
+| Application Insights `appi-agent-template-dev` | workspace-based, 0.1 GB/day, 30 days; connection string sensitive, not output |
+| Container Apps environment `cae-agent-template-dev` | Consumption, no VNet |
+| Identity `id-agent-template-dev-api` | used by `api` only |
+| Role assignment `Foundry User` | API identity, scoped to the project |
+| Container App `api` | secrets `database-url`, `ghcr-token` (sensitive) |
+| Container App `web` | secret `ghcr-token` (sensitive) |
+
+Checkov passes (16 passed, 7 skipped inline, 0 failed).
+
+### Monthly cost estimate (list prices, USD, approximate)
+
+| Item | Estimate | Notes |
+| --- | --- | --- |
+| Container Apps (Consumption, min 0) | about 0 | Inside the free grant (180 K vCPU-s, 360 K GiB-s, 2 M requests) for light use |
+| Log Analytics ingestion | 0 | 0.1 GB/day is about 3 GB/month, under the 5 GB free |
+| Application Insights ingestion | 0 | Same workspace and free grant; nothing is wired to it yet |
+| Worst case, both caps hit every day | up to about 2 to 3 | 6 GB/month, about 1 GB billable at 2.76 |
+| Identity, role assignment, environment | 0 | No fee |
+| Model tokens (Phase A) | 0.1 to 1 | Pay per use |
+| GHCR, Supabase | 0 | Outside Azure, free tiers |
+| **Phase B added fixed cost** | **0** | |
+| **Total with Phase A** | **about 0.1 to 4** | Under the USD 10 cap |
+
+This meets the ADR 0002 rule of no new fixed monthly cost. Risks: a cap does
+not stop Container Apps overage if traffic grows beyond the free grant, and
+budget alerts lag.

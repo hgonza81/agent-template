@@ -13,3 +13,11 @@ output "endpoint" {
 output "deployment_name" {
   value = azurerm_cognitive_deployment.model.name
 }
+
+output "account_name" {
+  value = azurerm_cognitive_account.this.name
+}
+
+output "project_name" {
+  value = azurerm_cognitive_account_project.this.name
+}

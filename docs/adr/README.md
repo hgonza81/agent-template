@@ -41,3 +41,4 @@ supersedes it and update the old one's status.
 - [0006](0006-pin-provider-library-loggers-to-warning.md): Pin provider and HTTP library loggers to WARNING
 - [0008](0008-delete-the-provider-conversation-before-the-subscription.md): Delete the provider conversation before the subscription
 - [0009](0009-use-github-container-registry-for-images.md): Use GitHub Container Registry for images
+- [0010](0010-expose-the-api-externally-and-defer-application-insights-wiring.md): Expose the API externally and defer Application Insights wiring
