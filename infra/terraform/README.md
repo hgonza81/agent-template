@@ -418,3 +418,19 @@ summary, then set `api_image` / `web_image` to those `...@sha256:...` values.
 The web build reads the repository variables `VITE_API_BASE_URL` (default: the
 dev API URL), `VITE_ENTRA_AUTHORITY`, `VITE_ENTRA_CLIENT_ID` and
 `VITE_API_SCOPES` (default blank); these are public, not secrets.
+
+## GitHub-to-Azure federation (dev)
+
+Created on 2026-11-08 with the Azure CLI (ADR 0012); no client secret exists.
+
+```sh
+az ad app create --display-name agent-template-github-dev
+az ad sp create --id <appId>
+az ad app federated-credential create --id <appId> --parameters '{"name":"github-env-dev","issuer":"https://token.actions.githubusercontent.com","subject":"repo:hgonza81/agent-template:environment:dev","audiences":["api://AzureADTokenExchange"]}'
+az role assignment create --assignee-object-id <servicePrincipalObjectId> --assignee-principal-type ServicePrincipal --role Contributor --scope /subscriptions/<sub>/resourceGroups/rg-agent-template-dev
+```
+
+The GitHub Environment `dev` only deploys from `main` and holds the variables
+`AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` (not secrets).
+Workflows authenticate with `azure/login` using OIDC (`id-token: write`) from a
+job that declares `environment: dev`.

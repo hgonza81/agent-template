@@ -107,7 +107,7 @@ Everything here needs a real Azure subscription, credentials, or provisioned res
 
 ## Phase 8: Azure CI/CD and dev deployment
 
-- [ ] Configure GitHub-to-Azure OIDC federation with an environment-scoped, least-privilege identity; no long-lived Azure credentials.
+- [x] Configure GitHub-to-Azure OIDC federation with an environment-scoped, least-privilege identity; no long-lived Azure credentials.
 - [ ] Keep Terraform plan jobs read-only; expose only a restricted/redacted summary and never publish state or sensitive plan binaries.
 - [ ] Gate applies and deployments with GitHub Environment approvals and protected branches.
 - [x] Build and scan immutable frontend/backend images, reference them by commit SHA/digest, and promote the same artifacts.
