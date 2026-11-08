@@ -242,6 +242,47 @@ another user's thread, subscription, user, or agent ID is rejected with `422`
 without touching their conversation, and that missing or under-scoped tokens
 never reach the agent.
 
+## Conversation retention and deletion
+
+Behavior today:
+
+- Chat content lives only in the Foundry conversation (ADR 0003). PostgreSQL
+  holds only the opaque conversation reference on `subscriptions`.
+- The conversation is kept while the account is active; there is no reset.
+- The backend has no account-deletion endpoint and the `FoundryClient` has no
+  delete method yet. Deleting a `subscriptions` row today would orphan the
+  provider conversation. Account deletion (spec: delete the subscription and
+  its Foundry thread) is therefore not implemented; it must call
+  `conversations.delete` first and then remove the row.
+- A conversation created just before a failed commit is also orphaned (see
+  "Conversation thread creation").
+
+Verified live on 2026-11-08 against the dev project, with no model calls (no
+tokens used), using the installed `openai` SDK 2.54.0 (`conversations.delete`
+exists) and `az login`: create a conversation, retrieve it, delete it
+(`deleted: true`), then retrieve again returned `404` and deleting again
+returned `404`. So deletion by the API is immediate from the caller's point of
+view and a deleted conversation can no longer be read through the API.
+Deletion is idempotent-safe if a `404` is treated as already deleted.
+
+Not verified (cannot be observed through the API):
+
+- Whether Microsoft keeps the data after deletion (backups, abuse monitoring
+  retention, or replicas) and for how long.
+- Retention of stored responses (`store=True` is sent) and whether deleting a
+  conversation also removes the responses created in it.
+- Data-handling terms of the deployment type (Global/DataZone Standard) and
+  data residency for stored conversation state.
+- Behavior at scale or with long histories; only an empty conversation was
+  deleted.
+
+Sources to review before launch (not re-fetched in this verification):
+Microsoft Learn, "Data, privacy, and security for Azure Direct Models in
+Microsoft Foundry" (https://learn.microsoft.com/azure/foundry/responsible-ai/openai/data-privacy)
+and the Foundry/Azure OpenAI Responses and Conversations API reference
+(https://learn.microsoft.com/azure/foundry/openai/how-to/responses). The user
+privacy notice must disclose the unverified points above, as spec.md requires.
+
 ## Foundry provider decision (pending provisioning)
 
 Status: proposed and documented only. Nothing is provisioned, no Azure call is
