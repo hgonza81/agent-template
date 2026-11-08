@@ -164,18 +164,18 @@ Keep the frontend and backend independently buildable and testable. Share only t
 ## Cost and security gates
 
 - A USD 200 Free Trial credit is a balance, not a monthly spending target or hard spending cap.
-- The approved initial dev/staging ceiling is USD 50 per month, separate from trial credit. Do not provision if the itemized expected monthly cost exceeds it without explicit approval of a revised ceiling.
+- The approved dev ceiling is USD 10 per month (see [ADR 0002](../../docs/adr/0002-single-dev-environment-on-azure-within-a-usd-10-budget.md)), enforced as a subscription spending limit, with fixed monthly costs kept low (up to USD 10 tolerated for now, flagged before creating them). Do not provision if the itemized expected monthly cost exceeds it without explicit approval of a revised ceiling. Azure AI Foundry stays on Azure; other components may be hosted elsewhere if their Azure fixed cost is high, decided with the owner and recorded as an ADR.
 - Before applying: check the credit remaining, subscription spending limit, Azure service and model regional availability, fixed monthly resources, Foundry token/model costs, telemetry ingestion, networking, database/storage, and taxes.
 - Configure budgets/alerts where supported, while documenting that alerts may lag and do not guarantee a hard cap.
 - Begin with one dev environment, scale-to-zero where appropriate, low-cost database sizing only if available, bounded Foundry quotas, and log retention sized to need.
-- Do not provision staging or production until dev behavior, data retention, and monthly cost are reviewed.
-- Initial dev/staging targets: complete chat response p95 ≤ 20 seconds, at least 5 concurrent chat requests, and 99% monthly API availability measured by readiness probes. Validate these targets against actual service quotas and costs; they are not production SLOs.
+- There is a single dev environment. Do not provision staging or production until dev behavior, data retention, and monthly cost are reviewed and the owner asks for them.
+- Initial dev targets: complete chat response p95 ≤ 20 seconds, at least 5 concurrent chat requests, and 99% monthly API availability measured by readiness probes. Validate these targets against actual service quotas and costs; they are not production SLOs.
 
 ## Open decisions to resolve before the affected tasks
 
 1. Provision and configure the Entra External ID tenant and SPA/API registrations before real sign-up tests.
-2. Select the Foundry project/model deployment and region before live integration or provisioning, after checking data handling, regional availability, quotas, and costs.
-3. Verify the selected region supports the chosen model and database under the subscription's current limits.
-4. Keep the itemized dev/staging estimate within the approved USD 50 monthly ceiling; obtain explicit approval before exceeding it. Validate the initial dev/staging targets documented in [`spec.md`](./spec.md), and agree separate production SLOs before production.
+2. Resolved (ADR 0002): Foundry project in `centralus` with a `gpt-5.4-nano` `DataZoneStandard` deployment, capacity capped at 10.
+3. Open for Phase B: PostgreSQL Flexible Server is restricted in several regions of this subscription (available in `centralus`) and its fixed cost exceeds the budget; decide the database and registry hosting before creating them.
+4. Keep the itemized dev estimate within the approved USD 10 monthly ceiling; obtain explicit approval before exceeding it. Validate the initial dev targets documented in [`spec.md`](./spec.md), and agree separate production SLOs before production.
 
-The MVP conversation model and lifecycle are resolved in [`spec.md`](./spec.md): one free subscription and persistent thread per person, no reset, retention while the account is active, and subscription/thread deletion on account deletion. Verify provider-side deletion behavior before production. The dev/staging budget and initial performance/availability targets are also agreed; verify actual costs and quotas before provisioning. Resolve Entra details before real sign-up testing and Foundry/region details before live integration or provisioning.
+The MVP conversation model and lifecycle are resolved in [`spec.md`](./spec.md): one free subscription and persistent thread per person, no reset, retention while the account is active, and subscription/thread deletion on account deletion. Verify provider-side deletion behavior before production. The dev budget and initial performance/availability targets are also agreed; verify actual costs and quotas before provisioning. Resolve Entra details before real sign-up testing and Foundry/region details before live integration or provisioning.
