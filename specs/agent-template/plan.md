@@ -85,7 +85,7 @@ GitHub Actions -- OIDC federation --> Azure deployment identity (later)
 - **Agent:** Keep Azure AI Foundry Agent Service as the intended hosted provider, accessed server-side by FastAPI using managed identity. Keep a typed provider boundary and deterministic fake for local development/tests. No project, model deployment, or region is selected yet; choose them immediately before live integration or provisioning, after reviewing availability, quotas, data handling, and cost. The initial product agent is deliberately plain: no app-authored persona or custom instructions/system prompt, tools, knowledge base, or application-managed guardrails. Provider/model defaults and mandatory platform safety behavior still apply; do not promise a behavior-free model.
 - **Conversation storage:** Foundry Agent Service owns thread/message history. The `foundry_thread_id` stored on the subscription binds the one MVP thread to its owner. Retention/deletion must be confirmed before production.
 - **Hosting:** Azure Container Apps for the web frontend and API. Deploy separately so the API can remain private or restricted if the selected topology permits; only the browser-facing app should be public by default.
-- **Registry:** Azure Container Registry with immutable commit-SHA or digest references and admin credentials disabled where supported.
+- **Registry:** GitHub Container Registry ([ADR 0009](../../docs/adr/0009-use-github-container-registry-for-images.md)) with immutable commit-SHA or digest references; Azure Container Apps pulls with a read-only token stored as a secret.
 - **Secrets and identity:** Managed identity for supported Azure data-plane access; Azure Key Vault for unavoidable secrets. No long-lived Azure credentials in GitHub.
 - **Observability:** OpenTelemetry instrumentation and privacy-safe structured logs from the first API slice; local OTLP collection/viewing for development; Azure Monitor/Log Analytics and Application Insights after Azure approval. No self-hosted Grafana/ELK production stack.
 - **Infrastructure as code:** Terraform with pinned CLI/provider versions, committed provider lock file, reusable modules, isolated environment state, and an Azure Storage backend protected by Entra data-plane RBAC.
@@ -124,7 +124,7 @@ Provision only after checking subscription restrictions, region/model availabili
 
 - One new project resource group per environment.
 - Azure Container Apps for React static serving and the FastAPI API; choose ingress, scaling, and network isolation based on the cost/security review.
-- Azure Container Registry for immutable frontend/API images.
+- GitHub Container Registry (not Azure) for immutable frontend/API images, per ADR 0009.
 - Azure Database for PostgreSQL Flexible Server for the subscription record.
 - Azure AI Foundry project/Agent Service and the approved model deployment; verify supported managed identity/RBAC and regional data-processing behavior.
 - User-assigned managed identity for the API, with scoped permissions for Foundry and Key Vault.
@@ -175,7 +175,7 @@ Keep the frontend and backend independently buildable and testable. Share only t
 
 1. Provision and configure the Entra External ID tenant and SPA/API registrations before real sign-up tests.
 2. Resolved (ADR 0002): Foundry project in `centralus` with a `gpt-5.4-nano` `DataZoneStandard` deployment, capacity capped at 10.
-3. Resolved ([ADR 0005](../../docs/adr/0005-use-supabase-for-postgresql.md)): PostgreSQL is hosted on Supabase, not Azure Database for PostgreSQL. Still open for Phase B: registry hosting (Azure Container Registry is about USD 5/month fixed) and where the connection string secret lives.
+3. Resolved ([ADR 0005](../../docs/adr/0005-use-supabase-for-postgresql.md)): PostgreSQL is hosted on Supabase, not Azure Database for PostgreSQL. Registry is GitHub Container Registry (ADR 0009). Still open for Phase B: where the database connection string and registry pull token live (Container Apps secrets is the simplest).
 4. Keep the itemized dev estimate within the approved USD 10 monthly ceiling; obtain explicit approval before exceeding it. Validate the initial dev targets documented in [`spec.md`](./spec.md), and agree separate production SLOs before production.
 
 The MVP conversation model and lifecycle are resolved in [`spec.md`](./spec.md): one free subscription and persistent thread per person, no reset, retention while the account is active, and subscription/thread deletion on account deletion. Verify provider-side deletion behavior before production. The dev budget and initial performance/availability targets are also agreed; verify actual costs and quotas before provisioning. Resolve Entra details before real sign-up testing and Foundry/region details before live integration or provisioning.
