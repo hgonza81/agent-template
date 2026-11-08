@@ -378,3 +378,33 @@ Checkov passes (16 passed, 7 skipped inline, 0 failed).
 This meets the ADR 0002 rule of no new fixed monthly cost. Risks: a cap does
 not stop Container Apps overage if traffic grows beyond the free grant, and
 budget alerts lag.
+
+## Phase B applied (dev)
+
+Applied on 2026-11-08 from `environments/dev` after explicit user approval:
+Log Analytics (0.1 GB/day cap, 30 days), Application Insights, the Container
+Apps environment (Consumption), `id-agent-template-dev-api` with the Foundry
+User role on the project, and the `api` and `web` Container Apps. The final
+plan after apply reports no changes.
+
+Verified with read-only checks: the resources exist in `rg-agent-template-dev`,
+HTTP redirects to HTTPS (301) and TLS completes, the API identity holds only
+Foundry User on the project, and the ingestion cap is in place.
+
+Known state until Phase 8 publishes real images:
+
+- Both apps run the public placeholder image `mcr.microsoft.com/k8se/quickstart`,
+  which listens on port 80 while the ingress targets the real ports (8080 for
+  `web`, 8000 for `api`). The revisions therefore stay `Unhealthy` and requests
+  hang. This is expected and is not worth bending the configuration for.
+  Deploying the real images fixes it.
+- The secrets (`database-url`, registry token) hold placeholder values. Replace
+  them with the Supabase session pooler URL and a read-only GHCR token when the
+  real images are deployed (ADR 0005, ADR 0009).
+- Two `lifecycle { ignore_changes }` entries (`workload_profile` on the
+  environment, `workload_profile_name` on the apps) stop Terraform from fighting
+  the implicit "Consumption" profile Azure fills in. The environment also sets
+  `logs_destination = "log-analytics"` explicitly.
+- If `terraform apply` is interrupted, a stale state lock can remain; confirm no
+  Terraform process is running, then `terraform force-unlock <id>`, and check
+  Azure for resources created before the interruption (import them if needed).

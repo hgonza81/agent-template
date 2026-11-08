@@ -31,9 +31,15 @@ resource "azurerm_container_app_environment" "this" {
   name                       = "cae-agent-template-${local.environment}"
   resource_group_name        = azurerm_resource_group.this.name
   location                   = azurerm_resource_group.this.location
+  logs_destination           = "log-analytics"
   log_analytics_workspace_id = azurerm_log_analytics_workspace.this.id
   # Consumption only: no workload profiles, no VNet, so no zone redundancy.
   tags = local.tags
+
+  # Azure adds an implicit "Consumption" workload profile that we do not manage.
+  lifecycle {
+    ignore_changes = [workload_profile]
+  }
 }
 
 resource "azurerm_container_app" "api" {
@@ -42,6 +48,11 @@ resource "azurerm_container_app" "api" {
   container_app_environment_id = azurerm_container_app_environment.this.id
   revision_mode                = "Single"
   tags                         = local.tags
+
+  # Azure sets an implicit "Consumption" workload profile name that we do not manage.
+  lifecycle {
+    ignore_changes = [workload_profile_name]
+  }
 
   identity {
     type         = "UserAssigned"
@@ -146,6 +157,11 @@ resource "azurerm_container_app" "web" {
   container_app_environment_id = azurerm_container_app_environment.this.id
   revision_mode                = "Single"
   tags                         = local.tags
+
+  # Azure sets an implicit "Consumption" workload profile name that we do not manage.
+  lifecycle {
+    ignore_changes = [workload_profile_name]
+  }
 
   registry {
     server               = "ghcr.io"
