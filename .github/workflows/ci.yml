@@ -193,11 +193,11 @@ jobs:
       - name: Check formatting
         run: terraform fmt -check -recursive -diff
 
-      - name: Initialize without a backend or credentials
-        run: terraform init -backend=false -input=false -lockfile=readonly
-
-      - name: Validate
-        run: terraform validate
+      - name: Initialize and validate each root without a backend or credentials
+        run: |
+          for dir in bootstrap environments/dev; do
+            (cd "$dir" && terraform init -backend=false -input=false -lockfile=readonly && terraform validate)
+          done
 
       - name: Security and policy scan
         run: |

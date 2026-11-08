@@ -194,3 +194,62 @@ up to 7 days at a time, so it is not a lasting saving.
 - Create the GitHub Environment and approve the OIDC federated identity later
   (Phase 8).
 - Data processing: choose `DataZoneStandard` (US) or `GlobalStandard`.
+
+## Phase A code and reviewed plans (not applied)
+
+Code: `bootstrap/` (state backend), `environments/dev/` (resource group,
+Foundry project, one `gpt-5.4-nano` `DataZoneStandard` deployment capped at 10,
+USD 10 budget with alerts at 50/80/100% actual and 100% forecast) and
+`modules/foundry`, `modules/budget`. Each root has its own committed
+`.terraform.lock.hcl` (copy of the root lock). No ACR, Container Apps,
+PostgreSQL, or Application Insights (Phase B). `subscription_id` and
+`budget_contact_emails` are variables (use `TF_VAR_subscription_id` and a
+git-ignored `*.auto.tfvars`). Both providers set
+`resource_provider_registrations = "none"`.
+
+Plans were generated read-only on 2026-11-08 (local state, plan files outside
+the repo; nothing applied, no model call). Static checks: `terraform fmt`,
+`init -backend=false`, `validate`, and Checkov (7 findings skipped inline with
+a reason: no private endpoints, customer-managed keys, or storage logging, all
+out of budget; public network access stays on, access is Entra-only).
+
+### Bootstrap plan: 5 to add, 0 to change, 0 to destroy
+
+| Create | Notes |
+| --- | --- |
+| Resource group `rg-agent-template-tfstate` | `centralus` |
+| Storage account `stagenttemplatetfstate` | GRS, TLS 1.2, HTTPS only, shared keys and local users off, OAuth default, no public blobs, infrastructure encryption, versioning, blob/container soft delete 14 days, name verified available |
+| Container `tfstate` | private |
+| Role assignment `Storage Blob Data Contributor` | scoped to the container, one per entry of `state_contributor_principal_ids` (plan used the operator) |
+| Management lock `CanNotDelete` | on the storage account |
+
+Sensitive: the account's access keys and connection strings are marked
+sensitive but are unusable (shared keys disabled); no secret appears in code
+or plan summary.
+
+### Dev plan: 5 to add, 0 to change, 0 to destroy
+
+| Create | Notes |
+| --- | --- |
+| Resource group `rg-agent-template-dev` | `centralus`, tag `environment = dev` |
+| Foundry account `ai-agent-template-dev` | `AIServices` S0, project management on, local (key) auth disabled, system-assigned identity, public endpoint |
+| Foundry project `proj-agent-template-dev` | system-assigned identity |
+| Deployment `chat` | `gpt-5.4-nano` `2026-03-17`, `DataZoneStandard`, capacity 10, `NoAutoUpgrade` |
+| Budget `budget-agent-template-dev` | USD 10 monthly from 2026-11-01, four notifications to the contact email (personal data, kept in the ignored tfvars) |
+
+Sensitive: keys are disabled and never output; outputs are the endpoint,
+project ID, and deployment name only.
+
+### Required before apply (manual, human)
+
+1. Confirm credits and spend limit in the portal.
+2. Approve the bootstrap apply; the human runs it with local state from
+   `bootstrap/` (`az login`, `TF_VAR_subscription_id`, an ignored tfvars with
+   the operator object ID), then keeps or discards the local state knowingly.
+3. Initialize dev with the backend values:
+   `terraform init -backend-config="resource_group_name=rg-agent-template-tfstate" -backend-config="storage_account_name=stagenttemplatetfstate" -backend-config="container_name=tfstate"`,
+   then re-run `plan` (the real dev plan runs against the remote backend) and
+   approve it separately.
+4. Accept the model terms and quota if the deployment is rejected.
+5. The operator needs a Foundry data-plane role (for example Azure AI User on
+   the project) to call the model locally; granting it is a later step.
