@@ -102,6 +102,8 @@ Everything here needs a real Azure subscription, credentials, or provisioned res
 - [x] Document conversation retention/deletion behavior and verify the provider's actual capabilities before production.
 - [x] Implement account deletion as `spec.md` requires: an authenticated endpoint that deletes the caller's own Foundry conversation (treat 404 as already deleted) and then their subscription, with tests for success, provider failure, retry after partial failure, and that one user cannot delete another's data; document it.
 - [x] Verify the migrations and the API against the Supabase PostgreSQL (ADR 0005) using the ignored `backend/.env.supabase`: apply migrations, exercise subscription provisioning and account deletion end to end with the fake agent, and document the connection settings (TLS, connection mode) without exposing credentials.
+- [ ] Write and review the Phase B Terraform for `dev` (ADRs 0002, 0005, 0009): Log Analytics and Application Insights with a low daily cap, a Container Apps environment on the Consumption plan, one user-assigned identity, and the `api` and `web` Container Apps (scale to zero, images from GitHub Container Registry, database URL and registry token as Container Apps secrets supplied outside git); generate an itemized plan and monthly cost estimate, and stop before apply.
+- [ ] Apply the reviewed Phase B plan after explicit user approval, then verify it in Azure with read-only checks and run the deferred Phase B verification below.
 
 ## Phase 8: Azure CI/CD and dev deployment
 
