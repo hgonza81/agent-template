@@ -285,3 +285,35 @@ empty; nothing from Phase B exists. No model calls were made.
 - Local API against Foundry: endpoint output `foundry_endpoint`, deployment
   `chat`, credential `az login` (`DefaultAzureCredential`). The live adapter
   wiring is a later task.
+
+## Phase A verification (read-only, 2026-11-08)
+
+Checked with read-only `az` and `terraform plan` (no apply, no model call, no
+changes). Subscription and principal IDs are omitted on purpose.
+
+| Area | Evidence | Result |
+| --- | --- | --- |
+| Storage TLS | `minimumTlsVersion = TLS1_2`, `enableHttpsTrafficOnly = true` | OK |
+| Storage keys | `allowSharedKeyAccess = false`, `defaultToOAuthAuthentication = true`, local users and SFTP off | OK |
+| Storage exposure | `allowBlobPublicAccess = false`; `publicNetworkAccess = Enabled`, firewall default `Allow` | Accepted risk: every request needs an Entra token plus RBAC (no keys or SAS exist); no private endpoint (out of budget) |
+| State durability | Versioning on, blob and container soft delete 14 days, `CanNotDelete` lock, infrastructure encryption; the blob has 15 versions and the current one is unleased | OK |
+| State locking | Concurrent plan during apply failed with "state blob is already locked" (see Provisioned) | OK |
+| Foundry TLS | Endpoint is HTTPS only (`https://ai-agent-template-dev.cognitiveservices.azure.com/`). Cognitive Services has no configurable minimum TLS property; Azure enforces TLS 1.2+ | OK (not tunable) |
+| Foundry keys | `disableLocalAuth = true`; system-assigned identity; no keys exist or are output | OK |
+| Foundry exposure | `publicNetworkAccess = Enabled`, no network ACLs. Anyone can reach the endpoint, but every call needs an Entra token with a data-plane role | Accepted risk for Phase A (local API); revisit with private endpoint or ACLs if budget allows |
+| Model deployment | `chat`: `gpt-5.4-nano`, `DataZoneStandard`, capacity 10, `Succeeded` | OK |
+| RBAC | Only two assignments exist for this project: `Storage Blob Data Contributor` on the `tfstate` container and `Foundry User` on the project, both for the operator user. No workload identity has Owner/Contributor | OK, least privilege |
+| Operator privilege | The operator is Owner at subscription scope (the human who deploys; not a workload identity) | Note: consider a lesser role or PIM for daily use; required to create role assignments |
+| Budget | `budget-agent-template-dev`: USD 10 monthly from 2026-11-01, notifications at 50/80/100% actual and 100% forecast, to the operator's email, all enabled; current spend USD 0 | OK (alerts lag, not a hard cap) |
+| Secrets in git | `git log --all` shows no `*.tfstate`, `*.tfvars`, `.env`, or plan files ever added; `.gitignore` covers `*.tfstate`, `*.tfstate.*`, `*.tfplan`, `tfplan*`, `*.tfvars`; the operator email and subscription ID appear nowhere in tracked files | OK |
+| Outputs | Dev outputs are endpoint, project ID, deployment name only | OK |
+| Drift | `terraform plan` against the remote state: "No changes" | OK |
+
+Local-only leftovers: `bootstrap/terraform.tfstate` and the `*.auto.local.auto.tfvars`
+files are git-ignored. The bootstrap state holds no usable secret (shared keys
+are disabled), but it is the only copy of the bootstrap state: back it up
+privately or migrate it to the remote backend knowingly.
+
+Not verifiable yet (no Container Apps, ACR, PostgreSQL, or App Insights exist):
+health probes, API telemetry free of private data, and ingress TLS for the
+apps. These moved to Phase B tasks in `tasks.md`.

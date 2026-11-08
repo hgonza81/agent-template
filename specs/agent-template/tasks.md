@@ -94,7 +94,8 @@ Everything here needs a real Azure subscription, credentials, or provisioned res
 - [x] Check subscription restrictions, current credit/spend limits, model/database region availability, quotas, data processing, and itemized expected monthly cost.
 - [x] Generate and review an environment-specific plan, including all creates/updates/deletes and sensitive-resource handling; obtain explicit approval before applying.
 - [x] Provision the remote-state backend only after approval and verify access/locking; provision dev only after a separately reviewed plan and explicit apply approval.
-- [ ] Verify TLS, identity/RBAC, network exposure, secret handling, health probes, cost alerts, and privacy-safe telemetry in dev.
+- [x] Verify TLS, identity/RBAC, network exposure, secret handling, and cost alerts for the Phase A resources (storage state backend, Foundry, budget); evidence in `infra/terraform/README.md`.
+- [ ] After Phase B is deployed, verify app ingress TLS, the API's managed identity/RBAC, health probes, and privacy-safe API telemetry in dev.
 - [ ] Enable live Foundry calls with managed-identity authorization and verify them against the provisioned project.
 - [ ] Add automated tests proving chat content, prompts, model output, tokens, credentials, and unnecessary personal data are absent from logs and telemetry, including with the real adapter.
 - [ ] Decide streaming only after a focused spike verifies reliable cancellation, disconnect cleanup, and testability; ship a tested non-streaming response first if needed.
