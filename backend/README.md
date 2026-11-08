@@ -103,6 +103,30 @@ all data in that database will be deleted. Stop PostgreSQL and preserve its
 data with `make db-down`. Do not remove the Compose volume unless you intend to
 delete both local databases and all their data.
 
+## Supabase PostgreSQL (ADR 0005)
+
+Verified on 2026-11-08 against a free-plan Supabase project (PostgreSQL 17):
+`alembic upgrade head` applies cleanly, and with the fake agent and the local
+issuer, subscription provisioning, chat, `DELETE /api/v1/me`, and isolation
+between two identities all behave as locally. The test suite is never run
+against Supabase.
+
+- Keep the connection string in an ignored file (`backend/.env.supabase`) or in
+  deployment secrets; never commit or log it. Load it only into the process
+  environment, e.g. `set -a; . backend/.env.supabase; set +a`.
+- Driver URL form: `postgresql+psycopg://postgres:<password>@<host>:5432/postgres`.
+- TLS: the server offers TLS and libpq negotiates it by default; append
+  `?sslmode=require` to the URL to make it mandatory (works, no code change).
+- Direct connection (`db.<ref>.supabase.co:5432`) is IPv6 only. It works from
+  machines with IPv6; the migrations and API run fine over it.
+- Session pooler (`aws-0-<region>.pooler.supabase.com:5432`, user
+  `postgres.<ref>`) accepts IPv4 and connects with `sslmode=require`; use it
+  where IPv6 egress is missing (probably Azure). Use session mode (port 5432),
+  not transaction mode (6543). Pending: confirm it from the actual Azure host in
+  Phase B, and re-run migrations through it once.
+- Remove test rows afterwards (`DELETE /api/v1/me` per identity); migrated
+  tables can stay.
+
 ## Quality checks
 
 Run `make check-backend` for Python formatting, lint, and type checks;

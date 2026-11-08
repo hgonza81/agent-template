@@ -101,7 +101,7 @@ Everything here needs a real Azure subscription, credentials, or provisioned res
 - [x] Decide streaming only after a focused spike verifies reliable cancellation, disconnect cleanup, and testability; ship a tested non-streaming response first if needed.
 - [x] Document conversation retention/deletion behavior and verify the provider's actual capabilities before production.
 - [x] Implement account deletion as `spec.md` requires: an authenticated endpoint that deletes the caller's own Foundry conversation (treat 404 as already deleted) and then their subscription, with tests for success, provider failure, retry after partial failure, and that one user cannot delete another's data; document it.
-- [ ] Verify the migrations and the API against the Supabase PostgreSQL (ADR 0005) using the ignored `backend/.env.supabase`: apply migrations, exercise subscription provisioning and account deletion end to end with the fake agent, and document the connection settings (TLS, connection mode) without exposing credentials.
+- [x] Verify the migrations and the API against the Supabase PostgreSQL (ADR 0005) using the ignored `backend/.env.supabase`: apply migrations, exercise subscription provisioning and account deletion end to end with the fake agent, and document the connection settings (TLS, connection mode) without exposing credentials.
 
 ## Phase 8: Azure CI/CD and dev deployment
 
