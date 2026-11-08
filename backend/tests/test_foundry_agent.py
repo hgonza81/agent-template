@@ -22,6 +22,12 @@ class MockClient:
         self.error = error
         self.delay = delay
         self.calls: list[dict[str, str]] = []
+        self.deleted: list[str] = []
+
+    async def delete_thread(self, thread_id: str) -> None:
+        if self.error:
+            raise self.error
+        self.deleted.append(thread_id)
 
     async def create_thread(self) -> str:
         if self.error:
@@ -109,3 +115,24 @@ def test_adapter_logs_nothing(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.DEBUG):
         asyncio.run(scenario())
     assert [r for r in caplog.records if r.name != "asyncio"] == []
+
+
+def test_delete_thread_passes_the_thread_and_maps_errors() -> None:
+    client = MockClient()
+    asyncio.run(FoundryChatAgent(client, agent_id="a").delete_thread("t-1"))
+    assert client.deleted == ["t-1"]
+
+    with pytest.raises(AgentUnavailableError) as unavailable:
+        asyncio.run(
+            FoundryChatAgent(
+                MockClient(error=RuntimeError(SECRET)), agent_id="a"
+            ).delete_thread("t-1")
+        )
+    assert SECRET not in repr(unavailable.value)
+    assert unavailable.value.__cause__ is None
+    with pytest.raises(AgentTimeoutError):
+        asyncio.run(
+            FoundryChatAgent(
+                MockClient(error=TimeoutError()), agent_id="a"
+            ).delete_thread("t-1")
+        )

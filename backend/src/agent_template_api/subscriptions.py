@@ -1,6 +1,9 @@
 """Idempotent provisioning of the single free subscription per identity."""
 
-from sqlalchemy import select
+from collections.abc import Awaitable, Callable
+
+from fastapi.concurrency import run_in_threadpool
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
@@ -56,3 +59,44 @@ def provision_subscription(engine: Engine, identity: TokenIdentity) -> Subscript
         if email is not None and email != subscription.email_snapshot:
             subscription.email_snapshot = email
         return subscription
+
+
+async def delete_account(
+    engine: Engine,
+    identity: TokenIdentity,
+    delete_thread: Callable[[str], Awaitable[None]],
+) -> None:
+    """Delete the caller's provider conversation, then their subscription.
+
+    The subscription row is locked (`SELECT ... FOR UPDATE`) for the whole
+    operation, so a concurrent first chat message cannot create a thread that
+    would be orphaned. The provider is deleted first and the row only after
+    that succeeded: a failure leaves the row (and its thread reference) in
+    place, so the request can simply be retried and no conversation is left
+    unreachable. Deleting an already-deleted account is a no-op.
+    """
+    connection = await run_in_threadpool(engine.connect)
+    try:
+        await run_in_threadpool(connection.begin)
+        row = await run_in_threadpool(
+            lambda: connection.execute(
+                select(Subscription.id, Subscription.foundry_thread_id)
+                .where(
+                    Subscription.identity_issuer == identity.issuer,
+                    Subscription.identity_subject == identity.subject,
+                )
+                .with_for_update()
+            ).one_or_none()
+        )
+        if row is None:
+            return
+        if row.foundry_thread_id is not None:
+            await delete_thread(row.foundry_thread_id)
+        await run_in_threadpool(
+            lambda: connection.execute(
+                delete(Subscription).where(Subscription.id == row.id)
+            )
+        )
+        await run_in_threadpool(connection.commit)
+    finally:
+        connection.close()

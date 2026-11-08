@@ -37,6 +37,10 @@ class ChatAgent(Protocol):
         """Append a user message to the thread and return the assistant reply."""
         ...
 
+    async def delete_thread(self, thread_id: str) -> None:
+        """Delete the provider conversation; an already-missing one is success."""
+        ...
+
 
 class FakeChatAgent:
     """Deterministic, in-memory agent for local work and tests (no Azure).
@@ -79,6 +83,11 @@ class FakeChatAgent:
         messages = self._threads[thread_id]
         messages.append(message)
         return f"Fake reply {len(messages)}: {message}"
+
+    async def delete_thread(self, thread_id: str) -> None:
+        if self.error is not None:
+            raise self.error
+        self._threads.pop(thread_id, None)
 
     def history(self, thread_id: str) -> list[str]:
         """User messages recorded in a thread (test inspection only)."""

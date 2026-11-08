@@ -39,7 +39,7 @@ from agent_template_api.conversations import ensure_thread_id
 from agent_template_api.database import create_database_engine
 from agent_template_api.logging_config import configure_logging
 from agent_template_api.settings import get_settings
-from agent_template_api.subscriptions import provision_subscription
+from agent_template_api.subscriptions import delete_account, provision_subscription
 from agent_template_api.telemetry import TelemetryRuntime, configure_telemetry
 
 settings = get_settings()
@@ -267,6 +267,30 @@ def get_my_subscription(
         started_at=subscription.started_at,
         email=subscription.email_snapshot,
     )
+
+
+@app.delete(
+    "/api/v1/me",
+    status_code=204,
+    responses={
+        401: {"model": ErrorResponse, "description": "Missing or invalid token"},
+        403: {"model": ErrorResponse, "description": "Token lacks the required scope"},
+        503: {"model": ErrorResponse, "description": "A dependency is unavailable"},
+        504: {"model": ErrorResponse, "description": "The provider timed out"},
+    },
+)
+async def delete_my_account(
+    identity: Annotated[TokenIdentity, Depends(get_current_identity)],
+    agent: Annotated[ChatAgent, Depends(get_chat_agent)],
+) -> Response:
+    try:
+        async with asyncio.timeout(settings.chat_timeout_seconds):
+            await delete_account(database_engine, identity, agent.delete_thread)
+    except (TimeoutError, AgentTimeoutError) as error:
+        raise HTTPException(status_code=504) from error
+    except (SQLAlchemyError, AgentError) as error:
+        raise HTTPException(status_code=503) from error
+    return Response(status_code=204)
 
 
 @app.post(

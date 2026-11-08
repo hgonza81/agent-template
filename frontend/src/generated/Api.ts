@@ -96,6 +96,21 @@ export namespace Api {
 
   /**
    * No description
+   * @name DeleteMyAccountApiV1MeDelete
+   * @summary Delete My Account
+   * @request DELETE:/api/v1/me
+   * @secure
+   */
+  export namespace DeleteMyAccountApiV1MeDelete {
+    export type RequestParams = {};
+    export type RequestQuery = {};
+    export type RequestBody = never;
+    export type RequestHeaders = {};
+    export type ResponseBody = void;
+  }
+
+  /**
+   * No description
    * @name GetMySubscriptionApiV1MeSubscriptionGet
    * @summary Get My Subscription
    * @request GET:/api/v1/me/subscription

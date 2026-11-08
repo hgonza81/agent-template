@@ -213,6 +213,19 @@ from the validated identity. Known limit: a provider thread created just
 before a failed commit is orphaned; the Foundry adapter should handle cleanup
 if the provider supports deletion.
 
+### Account deletion
+
+`DELETE /api/v1/me` (valid bearer token) deletes the caller's own account and
+returns `204` with no body. The target is always the validated
+(issuer, subject); nothing from the request selects it. It locks the
+subscription row, deletes the provider conversation (a provider `404` counts as
+already deleted), and only then deletes the row. If the provider call fails the
+row and its thread reference are kept and the response is a generic `503`
+(`504` on timeout), so retrying is safe and no conversation is left orphaned.
+Deleting an account that no longer exists is a no-op `204`. Chat content is
+never stored in PostgreSQL, so nothing else needs deleting; a new sign-in
+afterwards provisions a fresh subscription.
+
 ### Chat limits and failure handling
 
 | Control | Setting (default) | Result when exceeded |

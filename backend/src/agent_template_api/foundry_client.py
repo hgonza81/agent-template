@@ -58,3 +58,9 @@ class OpenAIFoundryClient:
         except NotFoundError:
             raise FoundryThreadNotFoundError from None
         return str(response.output_text)
+
+    async def delete_thread(self, thread_id: str) -> None:
+        try:
+            await self._client.conversations.delete(thread_id)
+        except NotFoundError:
+            return  # already deleted

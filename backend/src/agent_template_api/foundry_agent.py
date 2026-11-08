@@ -30,6 +30,10 @@ class FoundryClient(Protocol):
         """Add a user message, run the agent, and return the reply text."""
         ...
 
+    async def delete_thread(self, thread_id: str) -> None:
+        """Delete the thread; an already-missing thread must count as success."""
+        ...
+
 
 class FoundryChatAgent:
     """Plain agent: no instructions, tools, or retrieval are sent per call."""
@@ -57,6 +61,16 @@ class FoundryChatAgent:
             raise
         except FoundryThreadNotFoundError:
             raise AgentThreadNotFoundError from None
+        except TimeoutError:
+            raise AgentTimeoutError from None
+        except Exception:
+            raise AgentUnavailableError from None
+
+    async def delete_thread(self, thread_id: str) -> None:
+        try:
+            await self._client.delete_thread(thread_id)
+        except asyncio.CancelledError:
+            raise
         except TimeoutError:
             raise AgentTimeoutError from None
         except Exception:
