@@ -92,8 +92,8 @@ The Azure-dependent Phase 5 items (live managed-identity authorization, privacy 
 Everything here needs a real Azure subscription, credentials, or provisioned resources. Do not start any item without explicit user approval.
 
 - [x] Check subscription restrictions, current credit/spend limits, model/database region availability, quotas, data processing, and itemized expected monthly cost.
-- [ ] Generate and review an environment-specific plan, including all creates/updates/deletes and sensitive-resource handling; obtain explicit approval before applying.
-- [ ] Provision the remote-state backend only after approval and verify access/locking; provision dev only after a separately reviewed plan and explicit apply approval.
+- [x] Generate and review an environment-specific plan, including all creates/updates/deletes and sensitive-resource handling; obtain explicit approval before applying.
+- [x] Provision the remote-state backend only after approval and verify access/locking; provision dev only after a separately reviewed plan and explicit apply approval.
 - [ ] Verify TLS, identity/RBAC, network exposure, secret handling, health probes, cost alerts, and privacy-safe telemetry in dev.
 - [ ] Enable live Foundry calls with managed-identity authorization and verify them against the provisioned project.
 - [ ] Add automated tests proving chat content, prompts, model output, tokens, credentials, and unnecessary personal data are absent from logs and telemetry, including with the real adapter.

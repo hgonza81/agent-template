@@ -13,9 +13,9 @@
   security/policy scan. It needs no Azure credentials and never plans or
   applies. Run the first three locally from this directory before committing.
 
-## Environment and state design (not yet provisioned)
+## Environment and state design
 
-Design only: nothing below exists in Azure until a reviewed plan is approved.
+Phase A is provisioned (see "Provisioned (Phase A)" below); Phase B items are still design only.
 
 Layout under `infra/terraform/`:
 
@@ -253,3 +253,35 @@ project ID, and deployment name only.
 4. Accept the model terms and quota if the deployment is rejected.
 5. The operator needs a Foundry data-plane role (for example Azure AI User on
    the project) to call the model locally; granting it is a later step.
+
+## Provisioned (Phase A, applied 2026-11-08)
+
+Applied by the operator with explicit approval. Subscription is otherwise
+empty; nothing from Phase B exists. No model calls were made.
+
+- Bootstrap (local state, git-ignored): resource group
+  `rg-agent-template-tfstate`, storage account `stagenttemplatetfstate`
+  (`centralus`, Standard_GRS, shared keys disabled, versioning and 14-day soft
+  delete), container `tfstate`, `Storage Blob Data Contributor` on the
+  container for the operator, `CanNotDelete` lock
+  `lock-tfstate-cannot-delete`. Verified with `az`.
+- Dev (remote state `dev/terraform.tfstate`): resource group
+  `rg-agent-template-dev` (`centralus`), Foundry account
+  `ai-agent-template-dev` (AIServices S0, keys disabled), project
+  `proj-agent-template-dev`, deployment `chat` (`gpt-5.4-nano` `2026-03-17`,
+  `DataZoneStandard`, capacity 10, succeeded), budget
+  `budget-agent-template-dev` (USD 10 monthly), and a `Foundry User` role
+  (the former "Azure AI User") on the project for the operator
+  (`foundry_user_principal_ids`).
+- State locking verified: a second `plan` during an `apply` failed with
+  "state blob is already locked".
+- Plan vs. approval: the dev plan was the reviewed 5 creates plus one role
+  assignment (6 creates, 0 updates, 0 deletes). The first apply created the
+  five and failed on the role name `Azure AI User` (not found by that name);
+  the role is now `Foundry User` and the second apply added it.
+- Local, git-ignored inputs: `TF_VAR_subscription_id` and
+  `auto.local.auto.tfvars` in each root (`state_contributor_principal_ids`,
+  `foundry_user_principal_ids`, `budget_contact_emails`).
+- Local API against Foundry: endpoint output `foundry_endpoint`, deployment
+  `chat`, credential `az login` (`DefaultAzureCredential`). The live adapter
+  wiring is a later task.

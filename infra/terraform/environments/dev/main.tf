@@ -67,3 +67,12 @@ module "budget" {
   start_date        = var.budget_start_date
   contact_emails    = var.budget_contact_emails
 }
+
+# Data-plane access to the project for human developers (no keys exist).
+resource "azurerm_role_assignment" "foundry_user" {
+  for_each = var.foundry_user_principal_ids
+
+  scope                = module.foundry.project_id
+  role_definition_name = "Foundry User"
+  principal_id         = each.value
+}

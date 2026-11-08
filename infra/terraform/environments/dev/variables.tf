@@ -25,3 +25,9 @@ variable "budget_contact_emails" {
   description = "Budget alert recipients (supply via a git-ignored tfvars file)."
   type        = list(string)
 }
+
+variable "foundry_user_principal_ids" {
+  description = "Map of label to Entra object ID granted Azure AI User on the Foundry project (local development with az login)."
+  type        = map(string)
+  default     = {}
+}
