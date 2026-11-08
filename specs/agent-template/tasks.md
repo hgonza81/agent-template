@@ -98,7 +98,7 @@ Everything here needs a real Azure subscription, credentials, or provisioned res
 - [ ] After Phase B is deployed, verify app ingress TLS, the API's managed identity/RBAC, health probes, and privacy-safe API telemetry in dev.
 - [x] Enable live Foundry calls with managed-identity authorization and verify them against the provisioned project.
 - [x] Add automated tests proving chat content, prompts, model output, tokens, credentials, and unnecessary personal data are absent from logs and telemetry, including with the real adapter.
-- [ ] Decide streaming only after a focused spike verifies reliable cancellation, disconnect cleanup, and testability; ship a tested non-streaming response first if needed.
+- [x] Decide streaming only after a focused spike verifies reliable cancellation, disconnect cleanup, and testability; ship a tested non-streaming response first if needed.
 - [ ] Document conversation retention/deletion behavior and verify the provider's actual capabilities before production.
 
 ## Phase 8: Azure CI/CD and dev deployment
