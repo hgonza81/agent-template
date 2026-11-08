@@ -74,3 +74,35 @@ export function parseAuthConfig(raw: RawAuthConfig): AuthConfig | null {
 
   return { clientId, authority: url.toString().replace(/\/$/, ''), scopes }
 }
+
+/**
+ * Opt-in local sign-in for manual development: the base URL of the loopback
+ * issuer script. Blank disables it. It is refused outside the dev server and
+ * for anything but a plain loopback HTTP URL, so it cannot reach production.
+ */
+export function parseLocalSignInUrl(value: string | undefined, dev: boolean): string | null {
+  const trimmed = value?.trim() ?? ''
+  if (trimmed === '') {
+    return null
+  }
+  if (!dev) {
+    throw new Error('VITE_LOCAL_SIGNIN_URL is only allowed on the development server')
+  }
+  let url: URL
+  try {
+    url = new URL(trimmed)
+  } catch {
+    throw new Error('VITE_LOCAL_SIGNIN_URL must be an absolute loopback HTTP URL')
+  }
+  if (
+    url.protocol !== 'http:' ||
+    !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) ||
+    url.username.length > 0 ||
+    url.password.length > 0 ||
+    url.search.length > 0 ||
+    url.hash.length > 0
+  ) {
+    throw new Error('VITE_LOCAL_SIGNIN_URL must be an absolute loopback HTTP URL')
+  }
+  return url.toString().replace(/\/$/, '')
+}

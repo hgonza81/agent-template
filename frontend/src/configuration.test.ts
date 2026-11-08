@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseApiBaseUrl, parseAuthConfig } from '../configuration'
+import { parseApiBaseUrl, parseAuthConfig, parseLocalSignInUrl } from '../configuration'
 
 describe('parseApiBaseUrl', () => {
   it('uses the local API URL when no value is configured', () => {
@@ -53,5 +53,34 @@ describe('parseAuthConfig', () => {
     expect(() => parseAuthConfig({ ...valid, authority: 'https://t.example.test/?a=1' })).toThrow(
       'HTTPS',
     )
+  })
+})
+
+describe('parseLocalSignInUrl', () => {
+  it('is disabled when blank', () => {
+    expect(parseLocalSignInUrl(undefined, true)).toBeNull()
+    expect(parseLocalSignInUrl('  ', false)).toBeNull()
+  })
+
+  it('accepts a loopback HTTP URL on the dev server', () => {
+    expect(parseLocalSignInUrl('http://127.0.0.1:9000/', true)).toBe('http://127.0.0.1:9000')
+  })
+
+  it('is refused outside the dev server', () => {
+    expect(() => parseLocalSignInUrl('http://127.0.0.1:9000', false)).toThrow(
+      'only allowed on the development server',
+    )
+  })
+
+  it('rejects non-loopback, HTTPS, credentialed, and malformed URLs', () => {
+    for (const value of [
+      'http://example.test:9000',
+      'https://127.0.0.1:9000',
+      'http://user:pw@127.0.0.1:9000',
+      'http://127.0.0.1:9000?x=1',
+      'nope',
+    ]) {
+      expect(() => parseLocalSignInUrl(value, true)).toThrow('loopback HTTP URL')
+    }
   })
 })

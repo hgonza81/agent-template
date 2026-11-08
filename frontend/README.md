@@ -45,6 +45,15 @@ leave all three blank to run with sign-in disabled. Partial or invalid values
 fail `npm run dev` and `npm run build`. Tests use a fake auth context and a
 mocked MSAL, so they never contact a tenant.
 
+### Local sign-in without Azure (development only)
+
+Setting `VITE_LOCAL_SIGNIN_URL` to the loopback issuer printed by
+`make local-issuer` (see the root README) makes **Sign in** fetch a signed
+token from it (`LocalAuthProvider`), so the chat works against the API with the
+fake agent. It must be a plain loopback HTTP URL, takes precedence over the
+Entra values, and is refused by `npm run build`; it is never part of production
+bundles.
+
 ### Account entry points
 
 The start page offers **Create a free account**, **Sign in**, and a password

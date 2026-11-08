@@ -76,7 +76,7 @@ The Azure-dependent Phase 5 items (live managed-identity authorization, privacy 
 - [x] Add container build and vulnerability scanning to CI; publish no image or deployment credentials from untrusted PRs.
 - [x] Add database migration compatibility checks and document how local developers safely reset test data.
 - [x] Run the complete local suite and record commands/results before starting cloud infrastructure work.
-- [ ] Add an opt-in local sign-in for manual development (no Azure): a loopback OIDC issuer script plus an explicitly enabled frontend sign-in, so `make backend` + `make frontend` reach the chat with the fake agent while the API still validates real tokens; excluded from production builds, documented, and tested.
+- [x] Add an opt-in local sign-in for manual development (no Azure): a loopback OIDC issuer script plus an explicitly enabled frontend sign-in, so `make backend` + `make frontend` reach the chat with the fake agent while the API still validates real tokens; excluded from production builds, documented, and tested.
 
 ## Phase 7: Terraform and Azure dev foundation (approval required)
 

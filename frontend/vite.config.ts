@@ -2,9 +2,9 @@ import react from '@vitejs/plugin-react'
 import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 
-import { parseApiBaseUrl, parseAuthConfig } from './configuration.js'
+import { parseApiBaseUrl, parseAuthConfig, parseLocalSignInUrl } from './configuration.js'
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   parseApiBaseUrl(env.VITE_API_BASE_URL)
   parseAuthConfig({
@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => {
     authority: env.VITE_ENTRA_AUTHORITY,
     scopes: env.VITE_API_SCOPES,
   })
+
+  // Throws for production builds, so the local sign-in cannot ship.
+  parseLocalSignInUrl(env.VITE_LOCAL_SIGNIN_URL, command === 'serve' && mode !== 'production')
 
   return {
     plugins: [react()],

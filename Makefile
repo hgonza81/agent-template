@@ -2,7 +2,7 @@
 
 .PHONY: help setup backend-env frontend-env frontend-deps db-up db-down migrate \
 	migration backend backend-otel frontend test test-backend test-frontend check-backend \
-	check-frontend test build audit format openapi api-types db-reset-test docker-build docker-test
+	check-frontend test build audit format openapi api-types db-reset-test docker-build docker-test local-issuer
 .PHONY: observability-up observability-down
 
 help: ## Show available commands
@@ -38,6 +38,9 @@ migration: backend-env db-up ## Create a migration: make migration MESSAGE="desc
 
 backend: migrate ## Start the API (starts PostgreSQL and applies migrations)
 	cd backend && uv run uvicorn agent_template_api.main:app --reload --no-access-log
+
+local-issuer: backend-env ## Start the loopback OIDC issuer for manual local sign-in (no Azure)
+	cd backend && uv run python ../scripts/local_issuer.py
 
 backend-otel: migrate observability-up ## Start the API with local traces and metrics enabled
 	cd backend && OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 \

@@ -19,6 +19,26 @@ Run everything from the repository root.
 4. Check the API: `GET /api/v1/health/live` and `/api/v1/health/ready` should
    both return `{"status":"ok"}`.
 
+### Try the chat locally with sign-in (no Azure)
+
+Opt-in, development only. The API still validates real signed tokens; they
+come from a loopback issuer script instead of Entra.
+
+1. `make local-issuer` starts the issuer on `http://127.0.0.1:9000` and prints
+   the values to use.
+2. Set `OIDC_ISSUER`, `OIDC_DISCOVERY_URL`, `OIDC_AUDIENCE`, and
+   `OIDC_REQUIRED_SCOPE` in `backend/.env` (defaults: `http://127.0.0.1:9000`,
+   `.../.well-known/openid-configuration`, `api://local-dev`, `chat.use`), then
+   `make backend`.
+3. Set `VITE_LOCAL_SIGNIN_URL=http://127.0.0.1:9000` in `frontend/.env` (leave
+   `VITE_ENTRA_*` blank), then `make frontend`. **Sign in** now reaches the
+   chat with the fake agent.
+
+The issuer generates a throwaway key on each start (restarting it gives new
+tokens), binds to loopback only, and only hands tokens to the frontend origin.
+`npm run build` fails if `VITE_LOCAL_SIGNIN_URL` is set, so it cannot ship.
+Revert the blank values to go back to the default local setup.
+
 Optional telemetry: `make backend-otel` (instead of `make backend`) also starts
 a local collector, Prometheus, and Jaeger; stop them with
 `make observability-down`. Telemetry never contains chat content or
