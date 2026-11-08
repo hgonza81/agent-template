@@ -100,6 +100,7 @@ Everything here needs a real Azure subscription, credentials, or provisioned res
 - [x] Add automated tests proving chat content, prompts, model output, tokens, credentials, and unnecessary personal data are absent from logs and telemetry, including with the real adapter.
 - [x] Decide streaming only after a focused spike verifies reliable cancellation, disconnect cleanup, and testability; ship a tested non-streaming response first if needed.
 - [x] Document conversation retention/deletion behavior and verify the provider's actual capabilities before production.
+- [ ] Implement account deletion as `spec.md` requires: an authenticated endpoint that deletes the caller's own Foundry conversation (treat 404 as already deleted) and then their subscription, with tests for success, provider failure, retry after partial failure, and that one user cannot delete another's data; document it.
 
 ## Phase 8: Azure CI/CD and dev deployment
 
