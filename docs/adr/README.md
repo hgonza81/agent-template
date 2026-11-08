@@ -37,3 +37,4 @@ supersedes it and update the old one's status.
 - [0002](0002-single-dev-environment-on-azure-within-a-usd-10-budget.md): One Azure `dev` environment within a USD 10 monthly budget
 - [0003](0003-keep-conversation-history-in-foundry-threads.md): Keep conversation history in Foundry threads
 - [0004](0004-call-foundry-through-the-openai-sdk-with-the-project-endpoint.md): Call Foundry through the `openai` SDK with the project endpoint 
+- [0005](0005-use-supabase-for-postgresql.md): Use Supabase for PostgreSQL

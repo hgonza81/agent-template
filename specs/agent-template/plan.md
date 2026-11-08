@@ -175,7 +175,7 @@ Keep the frontend and backend independently buildable and testable. Share only t
 
 1. Provision and configure the Entra External ID tenant and SPA/API registrations before real sign-up tests.
 2. Resolved (ADR 0002): Foundry project in `centralus` with a `gpt-5.4-nano` `DataZoneStandard` deployment, capacity capped at 10.
-3. Open for Phase B: PostgreSQL Flexible Server is restricted in several regions of this subscription (available in `centralus`) and its fixed cost exceeds the budget; decide the database and registry hosting before creating them.
+3. Resolved ([ADR 0005](../../docs/adr/0005-use-supabase-for-postgresql.md)): PostgreSQL is hosted on Supabase, not Azure Database for PostgreSQL. Still open for Phase B: registry hosting (Azure Container Registry is about USD 5/month fixed) and where the connection string secret lives.
 4. Keep the itemized dev estimate within the approved USD 10 monthly ceiling; obtain explicit approval before exceeding it. Validate the initial dev targets documented in [`spec.md`](./spec.md), and agree separate production SLOs before production.
 
 The MVP conversation model and lifecycle are resolved in [`spec.md`](./spec.md): one free subscription and persistent thread per person, no reset, retention while the account is active, and subscription/thread deletion on account deletion. Verify provider-side deletion behavior before production. The dev budget and initial performance/availability targets are also agreed; verify actual costs and quotas before provisioning. Resolve Entra details before real sign-up testing and Foundry/region details before live integration or provisioning.
