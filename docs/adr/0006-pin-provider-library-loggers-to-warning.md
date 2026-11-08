@@ -1,4 +1,4 @@
-# 0005. Pin provider and HTTP library loggers to WARNING
+# 0006. Pin provider and HTTP library loggers to WARNING
 
 - Status: accepted
 - Date: 2026-11-08
