@@ -48,11 +48,23 @@ Run from the repository root.
   lockfile (`uv add`, `npm install`) and keep `make audit` clean.
 - Stop when the user says to stop; do not start the next task on your own
   initiative if told to pause.
+- Record every significant decision (hard to reverse, changes the design, costs
+  money, moves something outside Azure, or settles a real dilemma) as an ADR in
+  [`docs/adr/`](docs/adr/README.md), in the same commit as the change it
+  explains. Read the existing ADRs before deciding; to change a decision, add a
+  new ADR that supersedes the old one.
+- When a dilemma has several acceptable options, pick the simplest decent one
+  and improve it later if needed. This is an incremental project: do not
+  over-engineer or build for hypothetical needs, and say so in the ADR when you
+  chose simple over complete.
 
 ## Conventions
 
 - Cloud-free until the explicit Azure gates in `tasks.md` (Phase 7+): no Azure
   provisioning, credentials, or paid calls without explicit approval.
+  Azure budget and hosting rules (USD 10/month cap, avoid fixed costs, Foundry
+  stays on Azure, flag high fixed costs before creating them) are in
+  [ADR 0002](docs/adr/0002-single-dev-environment-on-azure-within-a-usd-10-budget.md).
 - Never commit secrets, `.env` files, local databases, Terraform state, or plan
   files. Only `*.env.example` files are tracked.
 - Privacy: never log or put in telemetry tokens, credentials, chat content, or
