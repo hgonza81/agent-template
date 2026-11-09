@@ -115,6 +115,7 @@ Everything here needs a real Azure subscription, credentials, or provisioned res
 - [x] Deploy to dev and run smoke tests for liveness/readiness, sign-up/auth, subscription provisioning, and chat; require successful checks before promotion.
 - [x] Export OpenTelemetry signals to Azure Monitor/Application Insights with access controls and retention; configure actionable alerts and verify alert delivery.
 - [x] Document app rollback, migration compatibility/recovery, deployment provenance, and incident troubleshooting.
+- [ ] Fix the problems found by the first real end-to-end test in dev: the chat request returns 503 on the deployed API (log only the provider error class and HTTP status, never content, so the cause is diagnosable), and the repeated `ProxyTracerProvider has no attribute resource` error from the Azure Monitor exporter; then re-run the end-to-end check.
 
 ## Phase 9: Production readiness and release (separate approval)
 
