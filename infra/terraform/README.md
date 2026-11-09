@@ -426,7 +426,7 @@ Created on 2026-11-08 with the Azure CLI (ADR 0012); no client secret exists.
 ```sh
 az ad app create --display-name agent-template-github-dev
 az ad sp create --id <appId>
-az ad app federated-credential create --id <appId> --parameters '{"name":"github-env-dev","issuer":"https://token.actions.githubusercontent.com","subject":"repo:hgonza81/agent-template:environment:dev","audiences":["api://AzureADTokenExchange"]}'
+az ad app federated-credential create --id <appId> --parameters '{"name":"github-env-dev","issuer":"https://token.actions.githubusercontent.com","subject":"repo:hgonza81@143525276/agent-template@1447445745:environment:dev","audiences":["api://AzureADTokenExchange"]}'
 az role assignment create --assignee-object-id <servicePrincipalObjectId> --assignee-principal-type ServicePrincipal --role Contributor --scope /subscriptions/<sub>/resourceGroups/rg-agent-template-dev
 ```
 

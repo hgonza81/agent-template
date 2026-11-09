@@ -13,7 +13,7 @@ forks or arbitrary branches.
 
 - One Entra app registration, `agent-template-github-dev`, with a federated
   credential (no client secret) for the exact subject
-  `repo:hgonza81/agent-template:environment:dev`, issuer
+  `repo:hgonza81@143525276/agent-template@1447445745:environment:dev`, issuer
   `https://token.actions.githubusercontent.com`.
 - The GitHub Environment `dev` only accepts deployments from `main`
   (deployment branch policy). Jobs get Azure access only by running in that
@@ -36,3 +36,11 @@ forks or arbitrary branches.
 - The identity was created with the Azure CLI, not Terraform; the commands are
   recorded in `infra/terraform/README.md` so it can be recreated.
 - A read-only identity for Terraform plan jobs is a separate, later task.
+
+## Update (2026-11-08)
+
+The first deploy failed with `AADSTS700213` because this repository's OIDC
+subject uses numeric IDs, not names:
+`repo:hgonza81@143525276/agent-template@1447445745:environment:dev`. The federated
+credential was updated to that exact subject. If the repository is renamed or
+recreated, the subject changes and the credential must be updated again.
