@@ -497,3 +497,20 @@ alerts), 1 to change (`api` secret and env; with dummy values it also shows
 the dummy secrets differing), 0 to destroy. Checkov: 16 passed, 7 skipped,
 0 failed. Pending: apply, deploying the new backend image through CI, and
 verifying alert delivery.
+
+## Telemetry and alert verification (dev, 2026-11-08)
+
+- Phase B observability applied (ADR 0019): the API exports traces and metrics
+  to Application Insights after CI deployed the new image. Data arrived
+  (requests, dependencies, database operations) and queries for bearer tokens,
+  registry tokens, connection strings and chat text over the exported records
+  returned zero matches.
+- Alert delivery: the action-group test API is not supported on this free
+  subscription ("Free subscription not supported"), so delivery was verified
+  with a temporary metric alert (`Requests > 0`, one-minute window) bound to the
+  same action group. It fired, and the notification email was sent to the
+  configured address; the rule was deleted right after. Terraform reports no
+  drift.
+- To repeat the check without Terraform: create a temporary metric alert on the
+  API app with the action group `ag-agent-template-dev-ops`, send a few requests,
+  confirm the email, and delete the rule.
