@@ -65,6 +65,11 @@ Run from the repository root.
   Azure budget and hosting rules (USD 10/month cap, avoid fixed costs, Foundry
   stays on Azure, flag high fixed costs before creating them) are in
   [ADR 0002](docs/adr/0002-single-dev-environment-on-azure-within-a-usd-10-budget.md).
+- No production work for now. The goal is one working `dev` environment with
+  real Azure AI Foundry, real Entra External ID and the rest real. Do not
+  create, plan, design or provision production, staging or any extra
+  environment, and do not start the `tasks.md` Phase 9 items, unless the user
+  explicitly asks.
 - Never commit secrets, `.env` files, local databases, Terraform state, or plan
   files. Only `*.env.example` files are tracked.
 - Privacy: never log or put in telemetry tokens, credentials, chat content, or

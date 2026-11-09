@@ -511,8 +511,8 @@ verifying alert delivery.
 - Alert delivery: the action-group test API is not supported on this free
   subscription ("Free subscription not supported"), so delivery was verified
   with a temporary metric alert (`Requests > 0`, one-minute window) bound to the
-  same action group. It fired, and the notification email was sent to the
-  configured address; the rule was deleted right after. Terraform reports no
+  same action group. It fired, the owner confirmed the email arrived, and the
+  rule was deleted right after. Terraform reports no
   drift.
 - To repeat the check without Terraform: create a temporary metric alert on the
   API app with the action group `ag-agent-template-dev-ops`, send a few requests,
