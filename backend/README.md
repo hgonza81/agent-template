@@ -368,3 +368,6 @@ content-free `AgentTimeoutError`, `AgentThreadNotFoundError`, and
 propagates, and the adapter never logs or records prompts, messages, or output.
 It is not selectable via `AGENT_PROVIDER` until the live client is wired in
 Phase 7b.
+
+In Azure, migrations run in the manual Container Apps job from the API image
+(`alembic -c alembic.ini upgrade head`, ADR 0017); see `infra/terraform/README.md`.

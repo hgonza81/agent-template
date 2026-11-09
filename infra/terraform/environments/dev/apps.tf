@@ -50,8 +50,10 @@ resource "azurerm_container_app" "api" {
   tags                         = local.tags
 
   # Azure sets an implicit "Consumption" workload profile name that we do not manage.
+  # The image is deployed by CI with `az containerapp update`; Terraform must
+  # not revert it (var.*_image only seeds the first apply or a recreation).
   lifecycle {
-    ignore_changes = [workload_profile_name]
+    ignore_changes = [workload_profile_name, template[0].container[0].image]
   }
 
   identity {
@@ -159,8 +161,10 @@ resource "azurerm_container_app" "web" {
   tags                         = local.tags
 
   # Azure sets an implicit "Consumption" workload profile name that we do not manage.
+  # The image is deployed by CI with `az containerapp update`; Terraform must
+  # not revert it (var.*_image only seeds the first apply or a recreation).
   lifecycle {
-    ignore_changes = [workload_profile_name]
+    ignore_changes = [workload_profile_name, template[0].container[0].image]
   }
 
   registry {
@@ -200,6 +204,65 @@ resource "azurerm_container_app" "web" {
         transport = "HTTP"
         port      = 8080
         path      = "/healthz"
+      }
+    }
+  }
+}
+
+# One-shot, manually triggered Alembic migration (ADR 0017). It runs the API
+# image against Supabase only: no identity (so no Azure permissions), no
+# ingress, and only the settings the app requires to start.
+resource "azurerm_container_app_job" "migrate" {
+  name                         = "caj-agent-template-${local.environment}-migrate"
+  resource_group_name          = azurerm_resource_group.this.name
+  location                     = azurerm_resource_group.this.location
+  container_app_environment_id = azurerm_container_app_environment.this.id
+  replica_timeout_in_seconds   = 300
+  replica_retry_limit          = 0
+  tags                         = local.tags
+
+  manual_trigger_config {
+    parallelism              = 1
+    replica_completion_count = 1
+  }
+
+  # The image is updated by CI before the job is started (see the README).
+  lifecycle {
+    ignore_changes = [workload_profile_name, template[0].container[0].image]
+  }
+
+  registry {
+    server               = "ghcr.io"
+    username             = var.ghcr_username
+    password_secret_name = "ghcr-token"
+  }
+
+  secret {
+    name  = "ghcr-token"
+    value = var.ghcr_read_token
+  }
+
+  secret {
+    name  = "database-url"
+    value = var.database_url
+  }
+
+  template {
+    container {
+      name    = "migrate"
+      image   = var.api_image
+      cpu     = 0.25
+      memory  = "0.5Gi"
+      command = ["alembic", "-c", "alembic.ini", "upgrade", "head"]
+
+      env {
+        name        = "DATABASE_URL"
+        secret_name = "database-url"
+      }
+      # Required by the settings model even though migrations never use it.
+      env {
+        name  = "CORS_ALLOWED_ORIGINS"
+        value = jsonencode([local.web_url])
       }
     }
   }

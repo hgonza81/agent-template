@@ -445,3 +445,36 @@ sign-up/sign-in flow. The values live outside the repo: `OIDC_*` in the ignored
 `auto.local.auto.tfvars` and `VITE_ENTRA_*` as GitHub repository variables.
 Issuer: `https://<tenantId>.ciamlogin.com/<tenantId>/v2.0`; authority for the
 SPA: `https://agenttemplate.ciamlogin.com/`.
+
+## Migration job and image updates (ADR 0017, not yet applied)
+
+`azurerm_container_app_job.migrate` (`caj-agent-template-dev-migrate`) runs
+`alembic -c alembic.ini upgrade head` from the API image in the same Container
+Apps environment: manual trigger, 300 s timeout, no retries, 0.25 vCPU / 0.5 GiB,
+no managed identity (no Azure permissions), only the `database-url` and registry
+secrets plus `CORS_ALLOWED_ORIGINS` (required by the settings model).
+
+Terraform ignores `template[0].container[0].image` on `api`, `web` and the job,
+since CI deploys images with `az containerapp update`. `api_image` and
+`web_image` are used only for the first apply or a recreation.
+
+Run a migration (point the job at the image first if it changed):
+
+```sh
+RG=rg-agent-template-dev JOB=caj-agent-template-dev-migrate
+az containerapp job update -g $RG -n $JOB --image ghcr.io/hgonza81/agent-template-api@sha256:<digest>
+az containerapp job start -g $RG -n $JOB --query name -o tsv     # execution name
+az containerapp job execution list -g $RG -n $JOB --query "[0].{name:name,status:properties.status}" -o table
+```
+
+Status ends as `Succeeded` or `Failed`. Logs (Log Analytics, a few minutes of
+delay):
+
+```sh
+az monitor log-analytics query -w <workspaceCustomerId> --analytics-query \
+  "ContainerAppConsoleLogs_CL | where ContainerJobName_s startswith 'caj-agent-template-dev-migrate' | project TimeGenerated, Log_s | order by TimeGenerated desc | take 50"
+```
+
+Plan on 2026-11-08 (read-only, remote state): 1 to add
+(`azurerm_container_app_job.migrate`), 0 to change, 0 to destroy; Checkov 16
+passed, 7 skipped, 0 failed. The apply is pending.

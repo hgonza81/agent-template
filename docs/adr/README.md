@@ -48,3 +48,4 @@ supersedes it and update the old one's status.
 - [0014](0014-entra-external-id-tenant-created-through-the-azure-api.md): Entra External ID tenant created through the Azure API
 - [0015](0015-protect-main-with-required-checks-only.md): Protect `main` with required checks only (supersedes 0013)
 - [0016](0016-no-terraform-plan-job-in-ci-for-now.md): No Terraform plan job in CI for now
+- [0017](0017-run-migrations-in-a-manual-container-apps-job.md): Run migrations in a manual Container Apps job

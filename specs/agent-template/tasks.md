@@ -111,7 +111,7 @@ Everything here needs a real Azure subscription, credentials, or provisioned res
 - [x] Keep Terraform plan jobs read-only; expose only a restricted/redacted summary and never publish state or sensitive plan binaries. (ADR 0016: CI has no plan job; plans run locally.)
 - [x] Gate applies and deployments with GitHub Environment approvals and protected branches. (Decided in ADR 0015: `main` requires the CI checks, with no PRs or approvals; the `dev` environment deploys only from `main`.)
 - [x] Build and scan immutable frontend/backend images, reference them by commit SHA/digest, and promote the same artifacts.
-- [ ] Apply database migrations via a separately controlled one-shot job with minimum permissions.
+- [x] Apply database migrations via a separately controlled one-shot job with minimum permissions.
 - [ ] Deploy to dev and run smoke tests for liveness/readiness, sign-up/auth, subscription provisioning, and chat; require successful checks before promotion.
 - [ ] Export OpenTelemetry signals to Azure Monitor/Application Insights with access controls and retention; configure actionable alerts and verify alert delivery.
 - [ ] Document app rollback, migration compatibility/recovery, deployment provenance, and incident troubleshooting.
