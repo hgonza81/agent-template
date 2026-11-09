@@ -59,6 +59,20 @@ the machine unless an OTLP endpoint is explicitly configured. Stop the
 optional telemetry containers with `make observability-down`; `make db-down`
 stops the default Compose services and preserves the database volume.
 
+## Azure Monitor / Application Insights export
+
+Setting `APPLICATIONINSIGHTS_CONNECTION_STRING` (a secret: it carries the
+instrumentation key; blank counts as unset) exports the same traces and HTTP
+and database metrics to Application Insights through the
+`azure-monitor-opentelemetry-exporter`. It can run next to the optional OTLP
+export; with neither variable set, telemetry stays off. Both go through the
+same allowlist described above, so route templates and status codes are
+exported but chat content, prompts, model output, tokens, URLs, SQL, and
+exception details never are. Statsbeat (Microsoft SDK self-telemetry) and
+on-disk offline storage of telemetry are disabled. In `dev` Terraform sets the
+variable from a Container Apps secret. Retention is 30 days with a 0.1 GB/day
+cap (see `infra/terraform/README.md`). Tests use a fake exporter, no network.
+
 ## OpenAPI contract
 
 FastAPI defines the API contract. After changing backend routes or models, run

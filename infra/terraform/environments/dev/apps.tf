@@ -77,6 +77,13 @@ resource "azurerm_container_app" "api" {
     value = var.database_url
   }
 
+  # Carries the instrumentation key; enables the Azure Monitor exporter in the
+  # API (ADR 0019).
+  secret {
+    name  = "appinsights-connection-string"
+    value = azurerm_application_insights.this.connection_string
+  }
+
   # External because the browser calls the API directly; every protected route
   # validates the Entra JWT in FastAPI (ADR 0010).
   ingress {
@@ -104,6 +111,10 @@ resource "azurerm_container_app" "api" {
       env {
         name        = "DATABASE_URL"
         secret_name = "database-url"
+      }
+      env {
+        name        = "APPLICATIONINSIGHTS_CONNECTION_STRING"
+        secret_name = "appinsights-connection-string"
       }
       env {
         name  = "CORS_ALLOWED_ORIGINS"

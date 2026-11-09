@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
+from azure.monitor.opentelemetry.exporter import (
+    AzureMonitorMetricExporter,
+    AzureMonitorTraceExporter,
+)
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -373,28 +378,57 @@ def configure_telemetry(
     app: FastAPI,
     engine: Engine,
     endpoint: str | None,
+    azure_monitor_connection_string: str | None = None,
 ) -> TelemetryRuntime | None:
-    if endpoint is None:
+    if endpoint is None and azure_monitor_connection_string is None:
         return None
 
-    normalized_endpoint = endpoint.rstrip("/")
     allowed_route_templates = _route_templates(app)
     resource = Resource.create({"service.name": "agent-template-api"})
     tracer_provider = TracerProvider(resource=resource)
-    span_exporter = PrivacyFilteringSpanExporter(
-        OTLPSpanExporter(endpoint=f"{normalized_endpoint}/v1/traces"),
-        allowed_route_templates,
-    )
-    tracer_provider.add_span_processor(BatchSpanProcessor(span_exporter))
-    metric_reader = PeriodicExportingMetricReader(
-        PrivacyFilteringMetricExporter(
-            OTLPMetricExporter(endpoint=f"{normalized_endpoint}/v1/metrics"),
-            allowed_route_templates,
+    span_exporters: list[SpanExporter] = []
+    metric_exporters: list[MetricExporter] = []
+    if endpoint is not None:
+        normalized_endpoint = endpoint.rstrip("/")
+        span_exporters.append(
+            OTLPSpanExporter(endpoint=f"{normalized_endpoint}/v1/traces")
         )
-    )
+        metric_exporters.append(
+            OTLPMetricExporter(endpoint=f"{normalized_endpoint}/v1/metrics")
+        )
+    if azure_monitor_connection_string is not None:
+        # Statsbeat is Microsoft's own SDK telemetry; keep it off. Offline
+        # storage would write telemetry to local disk, so it is disabled too.
+        os.environ.setdefault("APPLICATIONINSIGHTS_STATSBEAT_DISABLED_ALL", "true")
+        span_exporters.append(
+            AzureMonitorTraceExporter(
+                connection_string=azure_monitor_connection_string,
+                disable_offline_storage=True,
+            )
+        )
+        metric_exporters.append(
+            AzureMonitorMetricExporter(
+                connection_string=azure_monitor_connection_string,
+                disable_offline_storage=True,
+            )
+        )
+    for span_exporter in span_exporters:
+        tracer_provider.add_span_processor(
+            BatchSpanProcessor(
+                PrivacyFilteringSpanExporter(span_exporter, allowed_route_templates)
+            )
+        )
     meter_provider = MeterProvider(
         resource=resource,
-        metric_readers=[metric_reader],
+        metric_readers=[
+            PeriodicExportingMetricReader(
+                PrivacyFilteringMetricExporter(
+                    metric_exporter,
+                    allowed_route_templates,
+                )
+            )
+            for metric_exporter in metric_exporters
+        ],
     )
     sqlalchemy_instrumentor = instrument_application(
         app,

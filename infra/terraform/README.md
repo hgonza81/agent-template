@@ -478,3 +478,22 @@ az monitor log-analytics query -w <workspaceCustomerId> --analytics-query \
 Plan on 2026-11-08 (read-only, remote state): 1 to add
 (`azurerm_container_app_job.migrate`), 0 to change, 0 to destroy; Checkov 16
 passed, 7 skipped, 0 failed. The apply is pending.
+
+## Application Insights wiring and alerts (ADR 0019, plan only)
+
+`apps.tf` passes the Application Insights connection string to `api` as the
+Container Apps secret `appinsights-connection-string` (env
+`APPLICATIONINSIGHTS_CONNECTION_STRING`). Retention (30 days) and the daily
+cap (0.1 GB/day) are already set in `monitoring.tf`; no role is granted to
+people (the connection string only allows ingestion). New in `monitoring.tf`:
+action group `ag-agent-template-dev-ops` (email to `budget_contact_emails`)
+and metric alerts `alert-agent-template-dev-api-5xx` (more than 5 5xx requests
+in 15 minutes) and `alert-agent-template-dev-api-restarts` (more than 3
+restarts in 15 minutes). Estimated fixed cost: about USD 0.10/month per
+metric alert, about USD 0.20 total.
+
+Plan (read-only, dummy secret values): 3 to add (action group and two
+alerts), 1 to change (`api` secret and env; with dummy values it also shows
+the dummy secrets differing), 0 to destroy. Checkov: 16 passed, 7 skipped,
+0 failed. Pending: apply, deploying the new backend image through CI, and
+verifying alert delivery.

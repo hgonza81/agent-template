@@ -177,3 +177,26 @@ def test_foundry_provider_without_configuration_fails_at_startup() -> None:
 
 def test_foundry_provider_with_configuration_is_accepted() -> None:
     assert _base("foundry", "https://x.example/", "chat").foundry_deployment == "chat"
+
+
+def test_application_insights_connection_string_is_secret_and_blank_is_unset() -> None:
+    database_url = "postgresql+psycopg://agent_template:local-dev-only@localhost/app"
+    blank = Settings(
+        cors_allowed_origins=["http://127.0.0.1:5173"],
+        database_url=database_url,
+        applicationinsights_connection_string=" ",
+        _env_file=None,
+    )
+    assert blank.applicationinsights_connection_string is None
+    settings = Settings(
+        cors_allowed_origins=["http://127.0.0.1:5173"],
+        database_url=database_url,
+        applicationinsights_connection_string="InstrumentationKey=abc",
+        _env_file=None,
+    )
+    assert "abc" not in repr(settings)
+    assert settings.applicationinsights_connection_string is not None
+    assert (
+        settings.applicationinsights_connection_string.get_secret_value()
+        == "InstrumentationKey=abc"
+    )

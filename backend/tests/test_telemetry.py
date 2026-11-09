@@ -268,3 +268,84 @@ def test_privacy_filtering_exporter_removes_exception_details() -> None:
         assert spans[1].name == "application operation"
     finally:
         tracer_provider.shutdown()
+
+
+_CONNECTION_STRING = (
+    "InstrumentationKey=00000000-0000-0000-0000-000000000000;"
+    "IngestionEndpoint=https://ingest.invalid/"
+)
+
+
+def test_azure_monitor_export_is_privacy_filtered_and_needs_no_network(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spans = InMemorySpanExporter()
+    metrics = InMemoryMetricExporter()
+    received: dict[str, object] = {}
+
+    def fake_trace_exporter(**kwargs: object) -> InMemorySpanExporter:
+        received["trace"] = kwargs
+        return spans
+
+    def fake_metric_exporter(**kwargs: object) -> InMemoryMetricExporter:
+        received["metric"] = kwargs
+        return metrics
+
+    monkeypatch.setattr(
+        "agent_template_api.telemetry.AzureMonitorTraceExporter", fake_trace_exporter
+    )
+    monkeypatch.setattr(
+        "agent_template_api.telemetry.AzureMonitorMetricExporter",
+        fake_metric_exporter,
+    )
+    app = FastAPI()
+
+    @app.post("/records/{record_id}")
+    def post_record(record_id: str, payload: dict[str, str]) -> dict[str, str]:
+        with sqlite_engine.connect() as connection:
+            connection.execute(text("SELECT 'private-sql-value'"))
+        return {"record_id": record_id}
+
+    runtime = configure_telemetry(app, sqlite_engine, None, _CONNECTION_STRING)
+    assert runtime is not None
+    try:
+        response = TestClient(app).post(
+            "/records/private-path-value?q=private-query-value",
+            json={"message": "private-chat-content"},
+            headers={"Authorization": "Bearer private-token"},
+        )
+        assert response.status_code == 200
+        runtime.tracer_provider.force_flush()
+        runtime.meter_provider.force_flush()
+    finally:
+        runtime.shutdown()
+
+    for kwargs in received.values():
+        assert kwargs == {
+            "connection_string": _CONNECTION_STRING,
+            "disable_offline_storage": True,
+        }
+    exported_spans = "\n".join(span.to_json() for span in spans.get_finished_spans())
+    assert exported_spans
+    exported_metrics = "\n".join(
+        data.to_json() for batch in metrics.metrics for data in [batch]
+    )
+    assert exported_metrics
+    for text_out in (exported_spans, exported_metrics):
+        assert "private" not in text_out
+    assert "POST /records/{record_id}" in exported_spans
+
+
+def test_azure_monitor_exporters_are_built_alongside_otlp(
+    sqlite_engine: Engine,
+) -> None:
+    runtime = configure_telemetry(
+        FastAPI(), sqlite_engine, "http://127.0.0.1:4318", _CONNECTION_STRING
+    )
+    assert runtime is not None
+    try:
+        processors = runtime.tracer_provider._active_span_processor._span_processors
+        assert len(processors) == 2
+    finally:
+        runtime.shutdown()

@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     database_url: SecretStr
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     otel_exporter_otlp_endpoint: AnyHttpUrl | None = None
+    # Presence enables the Azure Monitor / Application Insights exporter. It
+    # carries the instrumentation key, so it is a secret.
+    applicationinsights_connection_string: SecretStr | None = None
     # "fake" (default) is the deterministic local agent: no network, no cost.
     # "foundry" calls the real Azure AI Foundry deployment and must be enabled
     # explicitly; missing configuration then fails at startup (never the fake).
@@ -43,6 +46,15 @@ class Settings(BaseSettings):
     @classmethod
     def normalize_log_level(cls, log_level: str) -> str:
         return log_level.upper()
+
+    @field_validator("applicationinsights_connection_string", mode="before")
+    @classmethod
+    def blank_applicationinsights_connection_string_is_unset(
+        cls, value: str | None
+    ) -> str | None:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @field_validator("otel_exporter_otlp_endpoint")
     @classmethod

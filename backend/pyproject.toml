@@ -7,6 +7,7 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
     "alembic>=1.15,<2.0",
     "azure-identity>=1.19,<2",
+    "azure-monitor-opentelemetry-exporter>=1.0.0b59,<2",
     "fastapi>=0.115,<1.0",
     "openai>=1.60,<3",
     "opentelemetry-exporter-otlp-proto-http>=1.30,<2",

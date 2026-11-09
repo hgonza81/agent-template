@@ -352,4 +352,9 @@ app.state.telemetry_runtime = configure_telemetry(
         if settings.otel_exporter_otlp_endpoint is not None
         else None
     ),
+    (
+        settings.applicationinsights_connection_string.get_secret_value()
+        if settings.applicationinsights_connection_string is not None
+        else None
+    ),
 )
