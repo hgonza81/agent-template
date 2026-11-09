@@ -47,3 +47,4 @@ supersedes it and update the old one's status.
 - [0013](0013-do-not-protect-main-for-now.md): Do not protect `main` for now (superseded by 0015)
 - [0014](0014-entra-external-id-tenant-created-through-the-azure-api.md): Entra External ID tenant created through the Azure API
 - [0015](0015-protect-main-with-required-checks-only.md): Protect `main` with required checks only (supersedes 0013)
+- [0016](0016-no-terraform-plan-job-in-ci-for-now.md): No Terraform plan job in CI for now
