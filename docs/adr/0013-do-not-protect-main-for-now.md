@@ -1,6 +1,6 @@
 # 0013. Do not protect `main` for now
 
-- Status: accepted
+- Status: superseded by [0015](0015-protect-main-with-required-checks-only.md)
 - Date: 2026-11-08
 
 ## Context
