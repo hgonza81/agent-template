@@ -10,7 +10,7 @@ logs or records message content.
 import asyncio
 
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from openai import AsyncOpenAI, NotFoundError
+from openai import AsyncOpenAI, NotFoundError, omit
 
 from agent_template_api.foundry_agent import FoundryThreadNotFoundError
 
@@ -53,7 +53,11 @@ class OpenAIFoundryClient:
                 conversation=thread_id,
                 input=content,
                 store=True,
-                max_output_tokens=self._max_output_tokens,
+                # The provider rejects `max_output_tokens: null` (400); `omit` leaves
+                # the parameter out of the request when it is not configured.
+                max_output_tokens=(
+                    omit if self._max_output_tokens is None else self._max_output_tokens
+                ),
             )
         except NotFoundError:
             raise FoundryThreadNotFoundError from None
