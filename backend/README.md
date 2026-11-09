@@ -72,6 +72,21 @@ exception details never are. Statsbeat (Microsoft SDK self-telemetry) and
 on-disk offline storage of telemetry are disabled. In `dev` Terraform sets the
 variable from a Container Apps secret. Retention is 30 days with a 0.1 GB/day
 cap (see `infra/terraform/README.md`). Tests use a fake exporter, no network.
+The trace exporter is given the app's own `TracerProvider` so it can read the
+service resource; otherwise it falls back to the global (resource-less) provider
+and logs `ProxyTracerProvider has no attribute resource` on every export.
+
+## Diagnosing provider failures
+
+When the provider call fails the API still answers with the generic `503`/`504`
+(`detail` + `request_id`), but the `api.request` log line (and the request span's
+`provider.error_type` / `provider.status_code` attributes) also carry
+`provider_error_type` (the exception class name, e.g. `AuthenticationError`,
+`PermissionDeniedError`, `NotFoundError`, `ClientAuthenticationError`,
+`CredentialUnavailableError`) and `provider_status` (HTTP status, when the
+exception has one). Nothing else from the exception (message, body, headers) is
+recorded, since it may echo chat content or tokens. Credential errors from
+`DefaultAzureCredential` are classified the same way.
 
 ## OpenAPI contract
 

@@ -104,6 +104,18 @@ def get_request_id(request: Request) -> str:
     return request_id
 
 
+def record_provider_error(request: Request, error: BaseException) -> None:
+    """Keep only the provider failure's class name and HTTP status."""
+    if not isinstance(error, AgentError):
+        return
+    request.state.provider_error = error
+    span = trace.get_current_span()
+    if error.provider_error_type is not None:
+        span.set_attribute("provider.error_type", error.provider_error_type)
+    if error.provider_status is not None:
+        span.set_attribute("provider.status_code", error.provider_status)
+
+
 @app.middleware("http")
 async def log_request(
     request: Request,
@@ -113,6 +125,7 @@ async def log_request(
     trace.get_current_span().set_attribute("request.id", request_id)
     started_at = perf_counter()
     request.state.error_category = None
+    request.state.provider_error = None
 
     try:
         response = await call_next(request)
@@ -138,6 +151,12 @@ async def log_request(
     }
     if response.status_code >= 400:
         event["error_category"] = request.state.error_category or "http_error"
+    provider_error = request.state.provider_error
+    if provider_error is not None:
+        if provider_error.provider_error_type is not None:
+            event["provider_error_type"] = provider_error.provider_error_type
+        if provider_error.provider_status is not None:
+            event["provider_status"] = provider_error.provider_status
     logger.log(
         logging.WARNING if response.status_code >= 500 else logging.INFO,
         json.dumps(event, separators=(",", ":"), sort_keys=True),
@@ -280,6 +299,7 @@ def get_my_subscription(
     },
 )
 async def delete_my_account(
+    request: Request,
     identity: Annotated[TokenIdentity, Depends(get_current_identity)],
     agent: Annotated[ChatAgent, Depends(get_chat_agent)],
 ) -> Response:
@@ -287,8 +307,10 @@ async def delete_my_account(
         async with asyncio.timeout(settings.chat_timeout_seconds):
             await delete_account(database_engine, identity, agent.delete_thread)
     except (TimeoutError, AgentTimeoutError) as error:
+        record_provider_error(request, error)
         raise HTTPException(status_code=504) from error
     except (SQLAlchemyError, AgentError) as error:
+        record_provider_error(request, error)
         raise HTTPException(status_code=503) from error
     return Response(status_code=204)
 
@@ -334,10 +356,12 @@ async def send_chat_message(
         async with asyncio.timeout(settings.chat_timeout_seconds):
             reply = await run_until_disconnect(request, converse())
     except (TimeoutError, AgentTimeoutError) as error:
+        record_provider_error(request, error)
         raise HTTPException(status_code=504) from error
     except ClientDisconnectedError as error:
         raise HTTPException(status_code=499) from error
     except (SQLAlchemyError, AgentError) as error:
+        record_provider_error(request, error)
         raise HTTPException(status_code=503) from error
     finally:
         chat_concurrency.release()

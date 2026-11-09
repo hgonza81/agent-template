@@ -321,11 +321,14 @@ def test_azure_monitor_export_is_privacy_filtered_and_needs_no_network(
     finally:
         runtime.shutdown()
 
-    for kwargs in received.values():
-        assert kwargs == {
+    for name, kwargs in received.items():
+        expected: dict[str, object] = {
             "connection_string": _CONNECTION_STRING,
             "disable_offline_storage": True,
         }
+        if name == "trace":
+            expected["tracer_provider"] = runtime.tracer_provider
+        assert kwargs == expected
     exported_spans = "\n".join(span.to_json() for span in spans.get_finished_spans())
     assert exported_spans
     exported_metrics = "\n".join(
@@ -349,3 +352,34 @@ def test_azure_monitor_exporters_are_built_alongside_otlp(
         assert len(processors) == 2
     finally:
         runtime.shutdown()
+
+
+def test_azure_monitor_trace_exporter_finds_the_resource_without_errors(
+    sqlite_engine: Engine,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: the exporter used the global ProxyTracerProvider (no resource)."""
+    from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
+
+    monkeypatch.setattr(AzureMonitorTraceExporter, "_transmit", lambda *_a: None)
+    monkeypatch.setattr(
+        AzureMonitorTraceExporter, "_handle_transmit_from_storage", lambda *_a: None
+    )
+    app = FastAPI()
+
+    @app.get("/ping")
+    def ping() -> dict[str, str]:
+        return {}
+
+    runtime = configure_telemetry(app, sqlite_engine, None, _CONNECTION_STRING)
+    assert runtime is not None
+    try:
+        with caplog.at_level("ERROR"):
+            with TestClient(app) as client:
+                assert client.get("/ping").status_code == 200
+            runtime.tracer_provider.force_flush()
+    finally:
+        runtime.shutdown()
+    assert "Failed to derive Resource" not in caplog.text
+    assert "ProxyTracerProvider" not in caplog.text

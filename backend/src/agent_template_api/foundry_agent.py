@@ -8,13 +8,27 @@ with the original exception dropped from the chain.
 """
 
 import asyncio
-from typing import Protocol
+from typing import Protocol, TypedDict
 
 from agent_template_api.agent import (
     AgentThreadNotFoundError,
     AgentTimeoutError,
     AgentUnavailableError,
 )
+
+
+class _Described(TypedDict):
+    provider_error_type: str
+    provider_status: int | None
+
+
+def _describe(error: Exception) -> _Described:
+    """Class name and HTTP status only; never the message, body, or headers."""
+    status = getattr(error, "status_code", None)
+    return {
+        "provider_error_type": type(error).__name__,
+        "provider_status": status if isinstance(status, int) else None,
+    }
 
 
 class FoundryThreadNotFoundError(Exception):
@@ -47,10 +61,10 @@ class FoundryChatAgent:
             return await self._client.create_thread()
         except asyncio.CancelledError:
             raise
-        except TimeoutError:
-            raise AgentTimeoutError from None
-        except Exception:
-            raise AgentUnavailableError from None
+        except TimeoutError as error:
+            raise AgentTimeoutError(**_describe(error)) from None
+        except Exception as error:
+            raise AgentUnavailableError(**_describe(error)) from None
 
     async def send_message(self, thread_id: str, message: str) -> str:
         try:
@@ -60,18 +74,20 @@ class FoundryChatAgent:
         except asyncio.CancelledError:
             raise
         except FoundryThreadNotFoundError:
-            raise AgentThreadNotFoundError from None
-        except TimeoutError:
-            raise AgentTimeoutError from None
-        except Exception:
-            raise AgentUnavailableError from None
+            raise AgentThreadNotFoundError(
+                provider_error_type="FoundryThreadNotFoundError", provider_status=404
+            ) from None
+        except TimeoutError as error:
+            raise AgentTimeoutError(**_describe(error)) from None
+        except Exception as error:
+            raise AgentUnavailableError(**_describe(error)) from None
 
     async def delete_thread(self, thread_id: str) -> None:
         try:
             await self._client.delete_thread(thread_id)
         except asyncio.CancelledError:
             raise
-        except TimeoutError:
-            raise AgentTimeoutError from None
-        except Exception:
-            raise AgentUnavailableError from None
+        except TimeoutError as error:
+            raise AgentTimeoutError(**_describe(error)) from None
+        except Exception as error:
+            raise AgentUnavailableError(**_describe(error)) from None

@@ -60,6 +60,8 @@ _SAFE_SPAN_ATTRIBUTES = frozenset(
         "db.system",
         "db.system.name",
         "error.type",
+        "provider.error_type",
+        "provider.status_code",
         "http.request.method",
         "http.response.status_code",
         "http.route",
@@ -403,6 +405,9 @@ def configure_telemetry(
         span_exporters.append(
             AzureMonitorTraceExporter(
                 connection_string=azure_monitor_connection_string,
+                # Without it the exporter reads the global provider, which is
+                # a resource-less proxy here, and logs an error per export.
+                tracer_provider=tracer_provider,
                 disable_offline_storage=True,
             )
         )

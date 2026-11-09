@@ -12,7 +12,21 @@ from uuid import uuid4
 
 
 class AgentError(Exception):
-    """Base class for provider failures; messages must stay content-free."""
+    """Base class for provider failures; messages must stay content-free.
+
+    `provider_error_type` (exception class name) and `provider_status` (HTTP
+    status code) describe the original failure; nothing else from it is kept.
+    """
+
+    def __init__(
+        self,
+        *args: object,
+        provider_error_type: str | None = None,
+        provider_status: int | None = None,
+    ) -> None:
+        super().__init__(*args)
+        self.provider_error_type = provider_error_type
+        self.provider_status = provider_status
 
 
 class AgentUnavailableError(AgentError):

@@ -6,6 +6,7 @@ success path and provider failure paths whose exceptions or bodies could echo
 the prompt or the reply.
 """
 
+import json
 import logging
 from collections.abc import Callable, Iterator
 from types import ModuleType
@@ -14,6 +15,8 @@ from uuid import uuid4
 import httpx
 import pytest
 from azure.core.credentials import AccessToken
+from azure.core.exceptions import ClientAuthenticationError
+from azure.identity import CredentialUnavailableError
 from fastapi.testclient import TestClient
 from openai import AsyncOpenAI
 from opentelemetry.sdk.metrics import MeterProvider
@@ -252,3 +255,86 @@ def test_chat_content_never_reaches_logs_traces_metrics_or_errors(
         root.removeHandler(capture)
         requests_logger.removeHandler(capture)
         root.setLevel(previous_level)
+
+
+class FailingCredential:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    def get_token(self, *scopes: str, **kwargs: object) -> AccessToken:
+        raise self.error
+
+
+@pytest.mark.parametrize(
+    ("status", "credential_error", "error_type", "provider_status"),
+    [
+        (400, None, "BadRequestError", 400),
+        (401, None, "AuthenticationError", 401),
+        (403, None, "PermissionDeniedError", 403),
+        (404, None, "FoundryThreadNotFoundError", 404),
+        (429, None, "RateLimitError", 429),
+        (500, None, "InternalServerError", 500),
+        (
+            200,
+            ClientAuthenticationError(f"denied {PROMPT} {PROVIDER_TOKEN}"),
+            "ClientAuthenticationError",
+            None,
+        ),
+        (
+            200,
+            CredentialUnavailableError(f"no identity {REPLY} {PROVIDER_TOKEN}"),
+            "CredentialUnavailableError",
+            None,
+        ),
+    ],
+)
+def test_provider_failures_log_only_error_class_and_status(
+    api_module: ModuleType,
+    status: int,
+    credential_error: Exception | None,
+    error_type: str,
+    provider_status: int | None,
+) -> None:
+    agent = make_agent(provider_handler(status))
+    if credential_error is not None:
+        # Credential errors surface while the SDK acquires the bearer token.
+        failing = OpenAIFoundryClient(
+            endpoint="https://foundry.example.test/api/projects/p",
+            credential=FailingCredential(credential_error),  # type: ignore[arg-type]
+        )
+        failing._client = failing._client.with_options(  # noqa: SLF001
+            http_client=httpx.AsyncClient(
+                transport=httpx.MockTransport(provider_handler(200))
+            )
+        )
+        agent = FoundryChatAgent(failing, agent_id="deployment-1")
+    api_module.app.dependency_overrides[get_chat_agent] = lambda: agent
+
+    configure_logging("INFO")
+    capture = Capture()
+    requests_logger = logging.getLogger("agent_template_api.requests")
+    requests_logger.addHandler(capture)
+    try:
+        with TestClient(api_module.app, raise_server_exceptions=False) as client:
+            response = client.post(
+                "/api/v1/chat/messages",
+                json={"message": PROMPT},
+                headers={"Authorization": f"Bearer {USER_TOKEN}"},
+            )
+    finally:
+        requests_logger.removeHandler(capture)
+
+    assert response.status_code == 503
+    assert set(response.json()) == {"detail", "request_id"}
+    assert response.json()["detail"] == "Service unavailable"
+    events = [
+        json.loads(line[line.index("{") : line.index("}") + 1])
+        for line in capture.lines
+        if '"api.request"' in line
+    ]
+    event = events[-1]
+    assert event["provider_error_type"] == error_type
+    assert event.get("provider_status") == provider_status
+    joined = "\n".join(capture.lines) + response.text
+    for value in SENSITIVE:
+        assert value not in joined

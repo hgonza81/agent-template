@@ -136,3 +136,15 @@ def test_delete_thread_passes_the_thread_and_maps_errors() -> None:
                 MockClient(error=TimeoutError()), agent_id="a"
             ).delete_thread("t-1")
         )
+
+
+def test_unavailable_error_carries_only_class_name_and_status() -> None:
+    class ProviderBoom(Exception):
+        status_code = 403
+
+    agent = FoundryChatAgent(MockClient(ProviderBoom(SECRET)), agent_id="a")
+    with pytest.raises(AgentUnavailableError) as info:
+        asyncio.run(agent.send_message("t", "hi"))
+    assert info.value.provider_error_type == "ProviderBoom"
+    assert info.value.provider_status == 403
+    assert SECRET not in repr(info.value.__dict__) + str(info.value)
