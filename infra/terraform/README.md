@@ -447,7 +447,11 @@ Administrator of that tenant and through Microsoft Graph, the API registration
 sign-up/sign-in flow. The values live outside the repo: `OIDC_*` in the ignored
 `auto.local.auto.tfvars` and `VITE_ENTRA_*` as GitHub repository variables.
 Issuer: `https://<tenantId>.ciamlogin.com/<tenantId>/v2.0`; authority for the
-SPA: `https://agenttemplate.ciamlogin.com/`.
+SPA: `https://<tenantId>.ciamlogin.com/<tenantId>`. The tenant-ID form is required:
+MSAL v5 checks that the issuer host in the discovery document matches the
+authority host, so the name-based authority `https://agenttemplate.ciamlogin.com/`
+fails with `endpoints_resolution_error` (the browser shows "We could not start
+sign-in").
 
 ## Migration job and image updates (ADR 0017, not yet applied)
 

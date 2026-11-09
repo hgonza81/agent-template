@@ -36,3 +36,12 @@ deleted.
   means repeating the documented steps.
 - The local loopback sign-in (`VITE_LOCAL_SIGNIN_URL`) stays available for
   offline development and must not be combined with `VITE_ENTRA_*`.
+
+## Update (2026-11-08)
+
+Sign-up failed in the browser with `endpoints_resolution_error` (the page showed
+"We could not start sign-in"). MSAL v5 rejects an authority whose host differs
+from the `issuer` host in the discovery document; External ID issues
+`https://<tenantId>.ciamlogin.com/<tenantId>/v2.0`. `VITE_ENTRA_AUTHORITY` was
+therefore changed to `https://<tenantId>.ciamlogin.com/<tenantId>`, which needs
+no code change.
