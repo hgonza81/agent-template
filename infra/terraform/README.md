@@ -517,3 +517,22 @@ verifying alert delivery.
 - To repeat the check without Terraform: create a temporary metric alert on the
   API app with the action group `ag-agent-template-dev-ops`, send a few requests,
   confirm the email, and delete the rule.
+
+## Phase B verification (dev, 2026-11-08)
+
+Checked with read-only commands after the real images were deployed:
+
+- TLS: both apps negotiate TLS 1.3 with a valid Microsoft-issued certificate,
+  reject TLS 1.1, redirect HTTP to HTTPS (301) and have `allowInsecure=false`.
+- Identity: the API runs as the user-assigned identity `id-agent-template-dev-api`
+  whose only role is Foundry User on the Foundry project; the web app has no
+  Azure identity. No workload identity holds Owner or Contributor.
+- Probes: both apps have a platform liveness probe. There is deliberately no
+  platform readiness probe (liveness must not depend on the database); readiness
+  is checked by the deploy job's smoke tests (`/api/v1/health/ready`).
+- Telemetry: API traces and metrics reach Application Insights and contain no
+  tokens, credentials, connection strings or chat text.
+
+Not verified: the call from the deployed API to Foundry with the managed
+identity. It needs an authenticated chat request, which needs a signed-in user
+in the Entra External ID tenant (manual check after signing up in the web app).
