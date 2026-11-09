@@ -391,16 +391,16 @@ Verified with read-only checks: the resources exist in `rg-agent-template-dev`,
 HTTP redirects to HTTPS (301) and TLS completes, the API identity holds only
 Foundry User on the project, and the ingestion cap is in place.
 
-Known state until Phase 8 publishes real images:
+Deployed state (2026-11-08): both apps run the real images published by CI
+to GHCR, referenced by digest (set through `api_image` / `web_image` in the
+ignored tfvars), and pull them with a read-only registry token. `GET
+/api/v1/health/live` and `/ready` return 200 (readiness reaches the Supabase
+session pooler), and the web app returns 200. Until the Entra External ID
+tenant exists, `OIDC_*` is unset and protected routes are not usable.
 
-- Both apps run the public placeholder image `mcr.microsoft.com/k8se/quickstart`,
-  which listens on port 80 while the ingress targets the real ports (8080 for
-  `web`, 8000 for `api`). The revisions therefore stay `Unhealthy` and requests
-  hang. This is expected and is not worth bending the configuration for.
-  Deploying the real images fixes it.
-- The secrets (`database-url`, registry token) hold placeholder values. Replace
-  them with the Supabase session pooler URL and a read-only GHCR token when the
-  real images are deployed (ADR 0005, ADR 0009).
+- The secrets (`database-url`, registry token) hold the real values, supplied
+  only through the git-ignored `auto.local.auto.tfvars`; they end up in the
+  remote state (protected by Entra RBAC), never in git.
 - Two `lifecycle { ignore_changes }` entries (`workload_profile` on the
   environment, `workload_profile_name` on the apps) stop Terraform from fighting
   the implicit "Consumption" profile Azure fills in. The environment also sets
