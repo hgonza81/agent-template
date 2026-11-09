@@ -434,3 +434,14 @@ The GitHub Environment `dev` only deploys from `main` and holds the variables
 `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` (not secrets).
 Workflows authenticate with `azure/login` using OIDC (`id-token: write`) from a
 job that declares `environment: dev`.
+
+## Entra External ID tenant (dev)
+
+Created on 2026-11-08 (ADR 0014): tenant `agenttemplate.onmicrosoft.com` in
+`rg-agent-template-auth` through the ARM `ciamDirectories` API, then, as Global
+Administrator of that tenant and through Microsoft Graph, the API registration
+(scope `chat.use`), the SPA registration, admin consent and an email-and-password
+sign-up/sign-in flow. The values live outside the repo: `OIDC_*` in the ignored
+`auto.local.auto.tfvars` and `VITE_ENTRA_*` as GitHub repository variables.
+Issuer: `https://<tenantId>.ciamlogin.com/<tenantId>/v2.0`; authority for the
+SPA: `https://agenttemplate.ciamlogin.com/`.

@@ -44,3 +44,5 @@ supersedes it and update the old one's status.
 - [0010](0010-expose-the-api-externally-and-defer-application-insights-wiring.md): Expose the API externally and defer Application Insights wiring
 - [0011](0011-publish-the-scanned-images-from-main-and-reference-them-by-digest.md): Publish the scanned images from main and reference them by digest
 - [0012](0012-github-to-azure-oidc-with-a-single-dev-deploy-identity.md): GitHub-to-Azure OIDC with a single `dev` deploy identity
+- [0013](0013-do-not-protect-main-for-now.md): Do not protect `main` for now
+- [0014](0014-entra-external-id-tenant-created-through-the-azure-api.md): Entra External ID tenant created through the Azure API
