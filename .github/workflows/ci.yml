@@ -224,6 +224,111 @@ jobs:
             echo "- \`$digest\`" >> "$GITHUB_STEP_SUMMARY"
           done
 
+  deploy:
+    # Deploys the published digests to dev, migrates, then smoke tests. Only
+    # trusted pushes to main (never pull requests or forks); Azure access comes
+    # from OIDC through the `dev` environment (ADR 0012, 0018).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: dev
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: false
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      RG: rg-agent-template-dev
+      MIGRATE_JOB: caj-agent-template-dev-migrate
+      API_APP: ca-agent-template-dev-api
+      WEB_APP: ca-agent-template-dev-web
+      API_IMAGE: ${{ needs.publish.outputs.api_image }}
+      WEB_IMAGE: ${{ needs.publish.outputs.web_image }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Log in to Azure with OIDC
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Record the running images (for rollback)
+        run: |
+          az config set extension.use_dynamic_install=yes_without_prompt \
+            extension.dynamic_install_allow_preview=true --only-show-errors
+          {
+            echo "PREV_API_IMAGE=$(az containerapp show -g "$RG" -n "$API_APP" --query 'properties.template.containers[0].image' -o tsv)"
+            echo "PREV_WEB_IMAGE=$(az containerapp show -g "$RG" -n "$WEB_APP" --query 'properties.template.containers[0].image' -o tsv)"
+          } >> "$GITHUB_ENV"
+
+      - name: Run database migrations
+        run: |
+          az containerapp job update -g "$RG" -n "$MIGRATE_JOB" --image "$API_IMAGE" --output none
+          execution="$(az containerapp job start -g "$RG" -n "$MIGRATE_JOB" --query name -o tsv)"
+          echo "Migration execution: $execution"
+          # The job has a 300 s timeout; wait up to 10 minutes for a final state.
+          for _ in $(seq 1 60); do
+            status="$(az containerapp job execution show -g "$RG" -n "$MIGRATE_JOB" \
+              --job-execution-name "$execution" --query properties.status -o tsv)"
+            echo "Migration status: $status"
+            case "$status" in
+              Succeeded) exit 0 ;;
+              Failed | Stopped | Degraded) echo "Migration did not succeed; apps were not updated." >&2; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "Timed out waiting for the migration." >&2
+          exit 1
+
+      - name: Deploy API and web images
+        run: |
+          az containerapp update -g "$RG" -n "$API_APP" --image "$API_IMAGE" --output none
+          az containerapp update -g "$RG" -n "$WEB_APP" --image "$WEB_IMAGE" --output none
+
+      - name: Smoke tests (liveness, readiness, web, auth boundary)
+        run: |
+          api="https://$(az containerapp show -g "$RG" -n "$API_APP" --query properties.configuration.ingress.fqdn -o tsv)"
+          web="https://$(az containerapp show -g "$RG" -n "$WEB_APP" --query properties.configuration.ingress.fqdn -o tsv)"
+          # Apps may scale from 0 replicas: retry for up to ~5 minutes each.
+          expect() {
+            local url="$1" want="$2" code=""
+            for _ in $(seq 1 30); do
+              code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" || true)"
+              [ "$code" = "$want" ] && { echo "OK   $want $url"; return 0; }
+              sleep 10
+            done
+            echo "FAIL $url: expected $want, last status $code" >&2
+            return 1
+          }
+          expect "$api/api/v1/health/live" 200
+          expect "$api/api/v1/health/ready" 200
+          expect "$web/" 200
+          expect "$web/healthz" 200
+          expect "$api/api/v1/me/subscription" 401
+
+      - name: Roll back to the previous images
+        if: failure()
+        run: |
+          echo "Deployment or smoke tests failed; restoring the previous images." >&2
+          if [ -n "${PREV_API_IMAGE:-}" ]; then
+            az containerapp update -g "$RG" -n "$API_APP" --image "$PREV_API_IMAGE" --output none || true
+          fi
+          if [ -n "${PREV_WEB_IMAGE:-}" ]; then
+            az containerapp update -g "$RG" -n "$WEB_APP" --image "$PREV_WEB_IMAGE" --output none || true
+          fi
+          echo "Migrations are not rolled back (they must stay backward compatible, ADR 0017)." >&2
+
+      - name: Manual checks still required
+        if: success()
+        run: |
+          echo "### Dev deployed and automated smoke tests passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Still manual: sign-up/sign-in, subscription provisioning and chat (see README, Dev deployment verification)." >> "$GITHUB_STEP_SUMMARY"
+
   secrets:
     runs-on: ubuntu-latest
     timeout-minutes: 10

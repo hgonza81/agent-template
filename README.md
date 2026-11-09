@@ -67,6 +67,25 @@ in-flight requests for up to 25 seconds).
 - `VITE_*` values are public and baked into the web image at build time via
   `--build-arg` (for example `VITE_API_BASE_URL`).
 
+## Dev deployment verification (ADR 0018)
+
+Every push to `main` that passes CI runs the `deploy` job: it migrates, updates
+the dev apps to the published digests and runs automated smoke tests (API
+liveness/readiness, web `/` and `/healthz`, and a 401 without a token). If
+anything fails, the job restores the previous images (migrations are not
+reverted). To roll back by hand:
+`az containerapp update -g rg-agent-template-dev -n <app> --image <previous digest>`.
+
+Sign-up, subscription provisioning and chat need a real Entra External ID user
+and are checked manually after each deployment:
+
+1. Open the web app URL and sign up with a new email (or sign in).
+2. Confirm the app shows the free subscription for that account (provisioned on
+   first sign-in; a second sign-in must not create another).
+3. Send a message and confirm a reply, reload and confirm the conversation
+   persists.
+4. Sign out and confirm the chat is no longer reachable.
+
 ## Local verification record
 
 Full local suite run before starting cloud infrastructure work (no Azure used):

@@ -49,3 +49,4 @@ supersedes it and update the old one's status.
 - [0015](0015-protect-main-with-required-checks-only.md): Protect `main` with required checks only (supersedes 0013)
 - [0016](0016-no-terraform-plan-job-in-ci-for-now.md): No Terraform plan job in CI for now
 - [0017](0017-run-migrations-in-a-manual-container-apps-job.md): Run migrations in a manual Container Apps job
+- [0018](0018-deploy-to-dev-from-ci-with-automated-smoke-tests.md): Deploy to dev from CI with automated smoke tests
