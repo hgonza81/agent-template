@@ -13,6 +13,9 @@
   security/policy scan. It needs no Azure credentials and never plans or
   applies. Run the first three locally from this directory before committing.
 
+Operational runbook (rollback, migration recovery, provenance, incidents):
+[`docs/operations.md`](../../docs/operations.md).
+
 ## Environment and state design
 
 Phase A is provisioned (see "Provisioned (Phase A)" below); Phase B items are still design only.

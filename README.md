@@ -75,6 +75,8 @@ liveness/readiness, web `/` and `/healthz`, and a 401 without a token). If
 anything fails, the job restores the previous images (migrations are not
 reverted). To roll back by hand:
 `az containerapp update -g rg-agent-template-dev -n <app> --image <previous digest>`.
+See [`docs/operations.md`](docs/operations.md) for rollback, migration
+recovery, deployment provenance, and troubleshooting.
 
 Sign-up, subscription provisioning and chat need a real Entra External ID user
 and are checked manually after each deployment:
