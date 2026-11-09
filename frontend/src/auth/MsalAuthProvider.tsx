@@ -20,7 +20,8 @@ interface Props {
 
 /**
  * Entra External ID sets the `name` claim to "unknown" when a self-service account
- * was created with only an email address; that is a placeholder, not a name.
+ * was created with only an email address; that is a placeholder, not a name. The
+ * caller then falls back to the email (`username`), which is display data only.
  */
 function meaningfulName(name: string | undefined): string | null {
   const trimmed = name?.trim() ?? ''
@@ -42,7 +43,7 @@ function MsalAuthState({ config, children }: Omit<Props, 'client'>) {
 
     return {
       status,
-      displayName: meaningfulName(account?.name),
+      displayName: meaningfulName(account?.name) ?? meaningfulName(account?.username),
       signIn: async (returnTo) => {
         saveReturnPath(returnTo ?? '/')
         await instance.loginRedirect({ scopes: config.scopes, redirectUri })

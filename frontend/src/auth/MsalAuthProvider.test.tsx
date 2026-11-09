@@ -13,7 +13,7 @@ const msal = vi.hoisted(() => ({
     acquireTokenSilent: vi.fn(),
     acquireTokenRedirect: vi.fn(),
   },
-  accounts: [] as { name: string }[],
+  accounts: [] as { name: string; username?: string }[],
   inProgress: 'none',
 }))
 
@@ -72,15 +72,29 @@ describe('MsalAuthProvider', () => {
   })
 
   it.each([['unknown'], ['Unknown'], ['  '], ['']])(
-    'treats the placeholder name %j as no name',
+    'shows the email when the name is the placeholder %j',
     (name) => {
       msal.inProgress = InteractionStatus.None
-      msal.accounts = [{ name }]
+      msal.accounts = [{ name, username: 'ada@example.test' }]
       const auth = setup()
       expect(screen.getByText('authenticated')).toBeDefined()
-      expect(auth.displayName).toBeNull()
+      expect(auth.displayName).toBe('ada@example.test')
     },
   )
+
+  it('shows nothing when there is neither a real name nor an email', () => {
+    msal.inProgress = InteractionStatus.None
+    msal.accounts = [{ name: 'unknown' }]
+    const auth = setup()
+    expect(auth.displayName).toBeNull()
+  })
+
+  it('prefers a real name over the email', () => {
+    msal.inProgress = InteractionStatus.None
+    msal.accounts = [{ name: 'Ada', username: 'ada@example.test' }]
+    const auth = setup()
+    expect(auth.displayName).toBe('Ada')
+  })
 
   it('signs in with the API scope via redirect and remembers the route', async () => {
     const auth = setup()
