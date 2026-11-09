@@ -71,6 +71,17 @@ describe('MsalAuthProvider', () => {
     expect(auth.displayName).toBe('Ada')
   })
 
+  it.each([['unknown'], ['Unknown'], ['  '], ['']])(
+    'treats the placeholder name %j as no name',
+    (name) => {
+      msal.inProgress = InteractionStatus.None
+      msal.accounts = [{ name }]
+      const auth = setup()
+      expect(screen.getByText('authenticated')).toBeDefined()
+      expect(auth.displayName).toBeNull()
+    },
+  )
+
   it('signs in with the API scope via redirect and remembers the route', async () => {
     const auth = setup()
     await auth.signIn('/chat')

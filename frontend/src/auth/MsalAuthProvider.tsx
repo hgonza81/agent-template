@@ -18,6 +18,15 @@ interface Props {
   children: ReactNode
 }
 
+/**
+ * Entra External ID sets the `name` claim to "unknown" when a self-service account
+ * was created with only an email address; that is a placeholder, not a name.
+ */
+function meaningfulName(name: string | undefined): string | null {
+  const trimmed = name?.trim() ?? ''
+  return trimmed === '' || trimmed.toLowerCase() === 'unknown' ? null : trimmed
+}
+
 function MsalAuthState({ config, children }: Omit<Props, 'client'>) {
   const { instance, accounts, inProgress } = useMsal()
   const account = accounts[0]
@@ -33,7 +42,7 @@ function MsalAuthState({ config, children }: Omit<Props, 'client'>) {
 
     return {
       status,
-      displayName: account?.name ?? null,
+      displayName: meaningfulName(account?.name),
       signIn: async (returnTo) => {
         saveReturnPath(returnTo ?? '/')
         await instance.loginRedirect({ scopes: config.scopes, redirectUri })
